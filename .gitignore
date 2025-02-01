@@ -2,3 +2,4 @@
 external
 notebooks
 venv_stat4830
+wandb

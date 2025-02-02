@@ -1,0 +1,3 @@
+[submodule "TinyZero-Efficient"]
+	path = TinyZero-Efficient
+	url = https://github.com/JustinSQiu/TinyZero-Efficient

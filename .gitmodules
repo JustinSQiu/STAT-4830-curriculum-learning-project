@@ -1,3 +1,6 @@
 [submodule "TinyZero-Efficient"]
 	path = TinyZero-Efficient
 	url = https://github.com/JustinSQiu/TinyZero-Efficient
+[submodule "DeepSeekRL-Extended-Efficient"]
+	path = DeepSeekRL-Extended-Efficient
+	url = https://github.com/JustinSQiu/DeepSeekRL-Extended-Efficient.git

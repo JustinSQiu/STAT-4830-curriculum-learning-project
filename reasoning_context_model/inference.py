@@ -54,7 +54,7 @@ context_model = FastLanguageModel.get_peft_model(
     random_state=42,
 )
 
-# Load your saved LoRA weights into the context model
+os.chdir('/mnt/castor/seas_home/j/jsq/dev/STAT-4830-curriculum-learning-project/reasoning_context_model/')
 context_model.load_lora("grpo_saved_lora")
 
 # ----- Inference Pipeline -----

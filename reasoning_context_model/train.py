@@ -11,7 +11,7 @@ PatchFastRL("GRPO", FastLanguageModel)
 from trl import GRPOConfig, GRPOTrainer
 from unsloth import is_bfloat16_supported
 
-from rewards import k_likelihood_reward_func, correctness_reward_func
+from rewards import k_likelihood_reward_func, correctness_reward_func, vr_cli_reward_func
 from models import context_model, context_tokenizer
 from data import context_dataset as dataset, context_eval_dataset as eval_dataset
 
@@ -47,7 +47,7 @@ training_args = GRPOConfig(
 trainer = GRPOTrainer(
     model=context_model,
     processing_class=context_tokenizer,
-    reward_funcs=[k_likelihood_reward_func],
+    reward_funcs=[vr_cli_reward_func],
     args=training_args,
     train_dataset=dataset,
     eval_dataset=eval_dataset

@@ -7,6 +7,8 @@
 #SBATCH --mem=256GB
 #SBATCH --constraint=48GBgpu
 
+cd /home1/j/jsq/STAT-4830-curriculum-learning-project/reasoning_context_model/
+
 source /nlp/data/jsq/venv_grpo/bin/activate
 
 module load cuda/11.7
@@ -23,4 +25,4 @@ huggingface-cli login --token "$HUGGINGFACE_TOKEN"
 wandb login --relogin "$WANDB_TOKEN"
 
 
-python grpo_context_model.py
+python ../train.py

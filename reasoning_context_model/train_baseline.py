@@ -21,7 +21,7 @@ from rewards import (
     strict_format_reward_func,
     soft_format_reward_func,
 )
-from datasets import dataset, eval_dataset
+from data import dataset, eval_dataset
 from models import context_model as model, context_tokenizer as tokenizer
 
 training_args = GRPOConfig(

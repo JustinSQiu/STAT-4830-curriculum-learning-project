@@ -1,5 +1,6 @@
 import torch
 import torch.nn.functional as F
+import math
 
 from models import base_model, base_tokenizer, context_model, context_tokenizer
 
@@ -83,6 +84,96 @@ def correctness_reward_func(prompts, completions, answer, **kwargs) -> list[floa
         
         rewards.append(reward)
     return rewards
+
+
+def compute_ppl(prompt: str, continuation: str) -> float:
+    full_input = prompt + continuation
+    # Tokenize the prompt and full input separately
+    prompt_ids = base_tokenizer(prompt, return_tensors="pt").input_ids
+    full_input_ids = base_tokenizer(full_input, return_tensors="pt").input_ids
+    prompt_len = prompt_ids.shape[-1]
+    input_ids = full_input_ids.to(base_model.device)
+
+    with torch.no_grad():
+        outputs = base_model(input_ids, output_hidden_states=True)
+    # Check if the logits need to be projected through lm_head
+    if outputs.logits.shape[-1] != base_model.config.vocab_size:
+        hidden_states = outputs.hidden_states[-1]
+        logits = base_model.lm_head(hidden_states)
+    else:
+        logits = outputs.logits
+
+    vocab_size = base_model.config.vocab_size
+    # Align logits: each logits[i] predicts token[i+1]
+    log_probs = F.log_softmax(logits[:, :-1, :], dim=-1)
+    target_token_ids = input_ids[:, 1:]
+    target_token_ids = torch.clamp(target_token_ids, min=0, max=vocab_size - 1)
+    
+    # Only take log probabilities corresponding to the continuation tokens.
+    # Because of the shift, we index from (prompt_len - 1) onward.
+    continuation_log_probs = log_probs[0, prompt_len - 1:, :].gather(
+        1, target_token_ids[0, prompt_len - 1:].unsqueeze(-1)
+    ).squeeze(-1)
+    
+    avg_log_prob = continuation_log_probs.mean().item()
+    perplexity = math.exp(-avg_log_prob)
+    return perplexity
+
+def compute_vr_cli_reward(question: str, answer: str, context: str) -> float:
+    """
+    I = [1 - (PPL(y|x, a) / PPL(y|x))] * 100,
+    
+    I =
+    0 if I < 0.05,
+    0.5 if 0.05 ≤ I < 1,
+    0.9 if 1 ≤ I < 2,
+    1 if I ≥ 2.
+    Here:
+      - story_info is the input prompt x,
+      - chapter is the gold continuation y,
+      - detailed_plan is the generated reasoning a.
+    """
+    # Baseline: probability of the chapter given the story info only.
+    baseline_prompt = f"{question}\n"
+    # With reasoning: include the detailed plan. The wording 'The answer is:' is optional;
+    # we include it here to mimic the style of your existing rewards.
+    improved_prompt = f"{question}\n{context}\n"
+
+    baseline_ppl = compute_ppl(baseline_prompt, answer)
+    improved_ppl = compute_ppl(improved_prompt, answer)
+
+    # Compute the improvement percentage I.
+    # A positive I means that conditioning on the detailed plan lowered perplexity.
+    I = (1 - improved_ppl / baseline_ppl) * 100
+
+    # Apply thresholding as described in Equation (7)
+    if I < 0.05:
+        reward = 0.0
+    elif I < 1:
+        reward = 0.5
+    elif I < 2:
+        reward = 0.9
+    else:
+        reward = 1.0
+
+    print("---- VR-CLI Reward Debug ----")
+    print(f"Baseline PPL (y|x): {baseline_ppl}")
+    print(f"Improved PPL (y|x, a): {improved_ppl}")
+    print(f"Improvement I (%): {I}")
+    print(f"Assigned Reward: {reward}", flush=True)
+    print("-----------------------------")
+
+    return reward
+
+def vr_cli_reward_func(prompts, completions, answer, **kwargs) -> list[float]:
+    rewards = []
+    for prompt, comp, ans in zip(prompts, completions, answer):
+        story_info = prompt[1]['content']
+        chapter = comp[0]['content']
+        reward = compute_vr_cli_reward(story_info, chapter, ans)
+        rewards.append(reward)
+    return rewards
+
 
 
 # Reward functions

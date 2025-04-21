@@ -13,7 +13,7 @@ from unsloth import is_bfloat16_supported
 
 from rewards import k_likelihood_reward_func, correctness_reward_func
 from models import context_model, context_tokenizer
-from datasets import context_dataset as dataset, context_eval_dataset as eval_dataset
+from data import context_dataset as dataset, context_eval_dataset as eval_dataset
 
 training_args = GRPOConfig(
     use_vllm = True, # use vLLM for fast inference!

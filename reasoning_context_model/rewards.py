@@ -1,0 +1,85 @@
+import torch
+import torch.nn.functional as F
+
+from models import base_model, base_tokenizer, context_model, context_tokenizer
+
+def compute_stable_probability_reward(question, context, answer):
+    print(f"Question: {question}")
+    print(f"Context: {context}")
+    print(f"Answer: {answer}")
+    prompt = f"{question}\n{context}\nThe answer is: "
+    full_input = f"{prompt}{answer}"
+
+    # Tokenize inputs
+    prompt_ids = base_tokenizer(prompt, return_tensors="pt").input_ids
+    full_input_ids = base_tokenizer(full_input, return_tensors="pt").input_ids
+    prompt_len = prompt_ids.shape[-1]
+    input_ids = full_input_ids.to(base_model.device)
+
+    # Get logits
+    with torch.no_grad():
+        outputs = base_model(input_ids, output_hidden_states=True)
+        
+    # If outputs.logits is not the full logits, compute them using lm_head
+    # I don't know why this happens but it does
+    if outputs.logits.shape[-1] != base_model.config.vocab_size:
+        # Apply the final projection (lm_head) to the last hidden state
+        hidden_states = outputs.hidden_states[-1]  # [1, seq_len, hidden_dim]
+        logits = base_model.lm_head(hidden_states)   # [1, seq_len, vocab_size]
+    else:
+        logits = outputs.logits # [1, seq_len, vocab_size]
+
+    vocab_size = base_model.config.vocab_size
+    # print(f"Logits shape: {logits.shape}")
+    # print(f"Vocab size: {vocab_size}")
+
+    # Shift logits to align each logit[i] predicting token[i+1]
+    log_probs = F.log_softmax(logits[:, :-1, :], dim=-1)
+
+    # The tokens we are predicting (shifted by 1)
+    target_token_ids = input_ids[:, 1:]
+    target_token_ids = torch.clamp(target_token_ids, min=0, max=vocab_size - 1)
+
+    # Extract the answer tokens only
+    answer_log_probs = log_probs[0, prompt_len - 1:, :].gather(
+        1, target_token_ids[0, prompt_len - 1:].unsqueeze(-1)
+    ).squeeze(-1)
+    avg_log_prob = answer_log_probs.mean().item()
+
+    print(f"Answer log probs: {answer_log_probs}")
+    print(f"Avg log prob: {avg_log_prob}", flush=True)
+
+    return avg_log_prob
+
+def k_likelihood_reward_func(prompts, completions, answer, **kwargs) -> list[float]:
+    rewards = []
+    for prompt, comp, ans in zip(prompts, completions, answer):
+        question = prompt[1]['content']
+        context = comp[0]['content']
+        reward = compute_stable_probability_reward(question, context, ans)
+        rewards.append(reward)
+    return rewards
+
+def correctness_reward_func(prompts, completions, answer, **kwargs) -> list[float]:
+    rewards = []
+    for prompt, comp, ans in zip(prompts, completions, answer):
+        question = prompt[1]['content']
+        context = comp[0]['content']
+        generation_prompt = f"{question}\n{context}\nThe answer is: "
+        inputs = base_tokenizer(generation_prompt, return_tensors="pt").input_ids.to(base_model.device)
+        output_ids = base_model.generate(
+            inputs, 
+            max_new_tokens=50,  # adjust this value as needed based on expected answer length
+            do_sample=False
+        )
+        generated_text = base_tokenizer.decode(output_ids[0][inputs.shape[-1]:], skip_special_tokens=True)
+        
+        generated_answer = generated_text.strip().split("\n")[0].strip()
+        provided_answer = ans.strip()
+        if generated_answer.lower() == provided_answer.lower():
+            reward = 1.0
+        else:
+            reward = 0.0
+        
+        rewards.append(reward)
+    return rewards

@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --job-name=train_context_3
-#SBATCH --output=slurm_output/context_3.txt
+#SBATCH --job-name=debug_print_no_thresh
+#SBATCH --output=slurm_output/debug_print_no_thresh.txt
 #SBATCH --partition=p_nlp
 #SBATCH --gpus=1
 #SBATCH --cpus-per-task=1

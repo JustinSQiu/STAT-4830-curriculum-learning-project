@@ -13,7 +13,8 @@ from unsloth import is_bfloat16_supported
 
 from rewards import k_likelihood_reward_func, correctness_reward_func, vr_cli_reward_func
 from models import context_model, context_tokenizer
-from data import context_dataset as dataset, context_eval_dataset as eval_dataset
+from data import context_dataset as dataset, context_eval_dataset as eval_dataset, context_train_dataset as train_dataset
+from custom_grpo_trainer import CustomGRPOTrainer
 
 training_args = GRPOConfig(
     use_vllm = True, # use vLLM for fast inference!
@@ -32,27 +33,31 @@ training_args = GRPOConfig(
     num_generations = 6, # Decrease if out of memory
     max_prompt_length = 256,
     max_completion_length = 1536,
-    # num_train_epochs = 1, # Set to 1 for a full training run
-    max_steps=300,
+    num_train_epochs = 2, # Set to 1 for a full training run
+    # max_steps=300,
     max_grad_norm = 0.1,
     report_to = "wandb", # Can use Weights & Biases
-    output_dir = "context_3",
-    # eval_strategy = "steps",
-    # eval_steps = 50,
-    # eval_on_start = True,
-    # per_device_eval_batch_size = 1,
+    output_dir = "ppl",
+    eval_strategy = "steps",
+    eval_steps = 50,
+    eval_on_start = True,
+    per_device_eval_batch_size = 1,
+    save_strategy = "steps",
+    save_steps = 400,
 )
 
 # Set up the trainer using the context model Q and our new reward function.
-trainer = GRPOTrainer(
+trainer = CustomGRPOTrainer(
     model=context_model,
     processing_class=context_tokenizer,
     reward_funcs=[vr_cli_reward_func],
     args=training_args,
-    train_dataset=dataset,
-    eval_dataset=eval_dataset
+    train_dataset=train_dataset,
+    eval_dataset=eval_dataset,
+    # compute_metrics=True
 )
 
 trainer.train()
+trainer.evaluate()
 
-context_model.save_lora("grpo_saved_lora")
+context_model.save_lora("ppl_full")

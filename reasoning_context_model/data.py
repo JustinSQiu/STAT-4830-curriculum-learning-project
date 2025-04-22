@@ -31,7 +31,8 @@ def get_gsm8k_questions_for_context(split="train") -> Dataset:
     return data
 
 context_dataset = get_gsm8k_questions_for_context()
-context_eval_dataset = get_gsm8k_questions_for_context(split="test").select(range(50)) # type: ignore
+context_train_dataset = get_gsm8k_questions_for_context(split="train")
+context_eval_dataset = get_gsm8k_questions_for_context(split="test").select(range(100)) # type: ignore
 
 
 def get_gsm8k_questions(split = "train") -> Dataset:
@@ -46,4 +47,5 @@ def get_gsm8k_questions(split = "train") -> Dataset:
     return data # type: ignore
 
 dataset = get_gsm8k_questions()
-eval_dataset = get_gsm8k_questions(split="test").select(range(50)) # type: ignore
+train_dataset = get_gsm8k_questions(split="train")
+eval_dataset = get_gsm8k_questions(split="test").select(range(100)) # type: ignore

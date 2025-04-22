@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 import math
 
-from models import base_model, base_tokenizer, context_model, context_tokenizer
+from models import base_model, base_tokenizer
 
 def compute_stable_probability_reward(question, context, answer):
     print(f"Question: {question}")
@@ -128,15 +128,9 @@ def compute_vr_cli_reward(question: str, answer: str, context: str) -> float:
     0.5 if 0.05 ≤ I < 1,
     0.9 if 1 ≤ I < 2,
     1 if I ≥ 2.
-    Here:
-      - story_info is the input prompt x,
-      - chapter is the gold continuation y,
-      - detailed_plan is the generated reasoning a.
     """
     # Baseline: probability of the chapter given the story info only.
     baseline_prompt = f"{question}\n"
-    # With reasoning: include the detailed plan. The wording 'The answer is:' is optional;
-    # we include it here to mimic the style of your existing rewards.
     improved_prompt = f"{question}\n{context}\n"
 
     baseline_ppl = compute_ppl(baseline_prompt, answer)
@@ -147,14 +141,15 @@ def compute_vr_cli_reward(question: str, answer: str, context: str) -> float:
     I = (1 - improved_ppl / baseline_ppl) * 100
 
     # Apply thresholding as described in Equation (7)
-    if I < 0.05:
-        reward = 0.0
-    elif I < 1:
-        reward = 0.5
-    elif I < 2:
-        reward = 0.9
-    else:
-        reward = 1.0
+    # if I < 0.05:
+    #     reward = 0.0
+    # elif I < 1:
+    #     reward = 0.5
+    # elif I < 2:
+    #     reward = 0.9
+    # else:
+    #     reward = 1.0
+    reward = I
 
     print("---- VR-CLI Reward Debug ----")
     print(f"Baseline PPL (y|x): {baseline_ppl}")
@@ -168,11 +163,15 @@ def compute_vr_cli_reward(question: str, answer: str, context: str) -> float:
 def vr_cli_reward_func(prompts, completions, answer, **kwargs) -> list[float]:
     rewards = []
     for prompt, comp, ans in zip(prompts, completions, answer):
-        story_info = prompt[1]['content']
-        chapter = comp[0]['content']
-        reward = compute_vr_cli_reward(story_info, chapter, ans)
+        question = prompt[1]['content']
+        context = comp[0]['content']
+        print(f"Question: {question}")
+        print(f"Context: {context}")
+        print(f"Answer: {ans}")
+        reward = compute_vr_cli_reward(question, ans, context)
         rewards.append(reward)
     return rewards
+
 
 
 

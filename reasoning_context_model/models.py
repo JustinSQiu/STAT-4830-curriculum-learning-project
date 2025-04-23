@@ -1,12 +1,12 @@
 from unsloth import FastLanguageModel
 
 # Loading the models
-max_seq_length = 1024
-lora_rank = 32
+max_seq_length = 2048
+lora_rank = 16
 
 base_model, base_tokenizer = FastLanguageModel.from_pretrained(
     model_name = "meta-llama/Llama-3.1-8B-Instruct",
-    max_seq_length = max_seq_length,
+    max_seq_length = 2048,
     load_in_4bit = True, # False for LoRA 16bit
     fast_inference = True, # Enable vLLM fast inference
     max_lora_rank = lora_rank,
@@ -17,11 +17,11 @@ for param in base_model.parameters():
 
 context_model, context_tokenizer = FastLanguageModel.from_pretrained(
     model_name = "meta-llama/Llama-3.1-8B-Instruct",
-    max_seq_length = max_seq_length,
+    max_seq_length = 1024,
     load_in_4bit = True, # False for LoRA 16bit
     fast_inference = True, # Enable vLLM fast inference
     max_lora_rank = lora_rank,
-    gpu_memory_utilization = 0.3, # Reduce if out of memory
+    gpu_memory_utilization = 0.6, # Reduce if out of memory
 )
 
 context_model = FastLanguageModel.get_peft_model(

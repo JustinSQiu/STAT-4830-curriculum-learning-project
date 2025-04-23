@@ -1,7 +1,7 @@
 from datasets import load_dataset, Dataset
 
 SYSTEM_PROMPT_CONTEXT = """
-Given the math question below, write a step-by-step reasoning context that clearly explains concepts needed to solve the problem.
+Given the math question below, write a step-by-step reasoning context that clearly explains concepts needed to solve the problem. Your prompt should include somewhere that the output should only include the answer, with no other text. The answer should be a single number, and should not include any units or symbols. Do NOT re-include the question in your output prompt.
 """
 
 SYSTEM_PROMPT = """

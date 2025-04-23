@@ -133,12 +133,17 @@ def compute_vr_cli_reward(question: str, answer: str, context: str) -> float:
     baseline_prompt = f"{question}\n"
     improved_prompt = f"{question}\n{context}\n"
 
+    print(f"Question: {question}", flush=True)
+    print(f"Baseline Prompt: {baseline_prompt}", flush=True)
+    print(f"Improved Prompt: {improved_prompt}", flush=True)
+    print(f"Answer: {answer}", flush=True)
+
     baseline_ppl = compute_ppl(baseline_prompt, answer)
     improved_ppl = compute_ppl(improved_prompt, answer)
 
     # Compute the improvement percentage I.
     # A positive I means that conditioning on the detailed plan lowered perplexity.
-    I = (1 - improved_ppl / baseline_ppl) * 100
+    I = (1 - improved_ppl / baseline_ppl) # * 100
 
     # Apply thresholding as described in Equation (7)
     # if I < 0.05:
@@ -149,7 +154,7 @@ def compute_vr_cli_reward(question: str, answer: str, context: str) -> float:
     #     reward = 0.9
     # else:
     #     reward = 1.0
-    reward = I
+    reward = max(-1, I)
 
     print("---- VR-CLI Reward Debug ----")
     print(f"Baseline PPL (y|x): {baseline_ppl}")

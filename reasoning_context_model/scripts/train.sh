@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --job-name=debug
-#SBATCH --output=slurm_output/debug.txt
+#SBATCH --job-name=train_absolute
+#SBATCH --output=slurm_output/train_absolute.txt
 #SBATCH --partition=p_nlp
 #SBATCH --gpus=1
 #SBATCH --cpus-per-task=1

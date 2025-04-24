@@ -38,7 +38,7 @@ training_args = GRPOConfig(
     # max_steps=300,
     max_grad_norm = 0.1,
     report_to = "wandb", # Can use Weights & Biases
-    output_dir = "ppl_gsm8k_relative_full",
+    output_dir = "ppl_gsm8k_absolute_full",
     eval_strategy = "steps",
     eval_steps = 100,
     eval_on_start = True,
@@ -47,7 +47,7 @@ training_args = GRPOConfig(
     save_steps = 500,
 )
 
-reward_type = "relative"
+reward_type = "absolute" # Choose from 'relative', 'absolute', or 'hybrid'
 dataset_name = "gsm8k"
 
 trainer = CustomGRPOTrainer(

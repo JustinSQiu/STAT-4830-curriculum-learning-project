@@ -11,6 +11,10 @@ import math
 
 class CustomGRPOTrainer(GRPOTrainer):
     def __init__(self, *args, **kwargs):
+        self.reward_type = kwargs.get("reward_type", "relative")
+        del kwargs["reward_type"]
+        if self.reward_type not in ["relative", "absolute", "hybrid"]:
+            raise ValueError("Invalid reward type. Choose from 'relative', 'absolute', or 'hybrid'.")
         super().__init__(*args, **kwargs)
         # Prepare vLLM sampling parameters
         self._ctx_sampling_params = SamplingParams(
@@ -23,7 +27,6 @@ class CustomGRPOTrainer(GRPOTrainer):
             top_p=0.95,
             max_tokens=self.max_completion_length,
         )
-        self.reward_type = kwargs.get("reward_type", "relative")
 
     def evaluate(self, eval_dataset=None, **kwargs):
         print("Evaluating...")

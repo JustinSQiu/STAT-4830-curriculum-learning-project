@@ -89,8 +89,18 @@ def correctness_reward_func(prompts, completions, answer, **kwargs) -> list[floa
 def compute_ppl(prompt: str, continuation: str) -> float:
     full_input = prompt + continuation
     # Tokenize the prompt and full input separately
-    prompt_ids = base_tokenizer(prompt, return_tensors="pt").input_ids
-    full_input_ids = base_tokenizer(full_input, return_tensors="pt").input_ids
+    prompt_ids = base_tokenizer(
+        prompt,
+        return_tensors="pt",
+        truncation=True,
+        max_length=base_model.config.max_position_embeddings,
+    ).input_ids
+    full_input_ids = base_tokenizer(
+        full_input,
+        return_tensors="pt",
+        truncation=True,
+        max_length=base_model.config.max_position_embeddings,
+    ).input_ids
     prompt_len = prompt_ids.shape[-1]
     input_ids = full_input_ids.to(base_model.device)
 
@@ -119,7 +129,7 @@ def compute_ppl(prompt: str, continuation: str) -> float:
     perplexity = math.exp(-avg_log_prob)
     return perplexity
 
-def compute_vr_cli_reward(question: str, answer: str, context: str) -> float:
+def compute_vr_cli_reward(question: str, answer: str, context: str, tpe='relative') -> float:
     """
     I = [1 - (PPL(y|x, a) / PPL(y|x))] * 100,
     
@@ -129,6 +139,8 @@ def compute_vr_cli_reward(question: str, answer: str, context: str) -> float:
     0.9 if 1 ≤ I < 2,
     1 if I ≥ 2.
     """
+    if tpe not in ['relative', 'absolute', 'hybrid']:
+        raise ValueError("Invalid type. Choose from 'relative', 'absolute', or 'hybrid'.")
     # Baseline: probability of the chapter given the story info only.
     baseline_prompt = f"{question}\n"
     improved_prompt = f"{question}\n{context}\n"
@@ -143,23 +155,18 @@ def compute_vr_cli_reward(question: str, answer: str, context: str) -> float:
 
     # Compute the improvement percentage I.
     # A positive I means that conditioning on the detailed plan lowered perplexity.
-    I = (1 - improved_ppl / baseline_ppl) # * 100
+    relative = max(0, (1 - improved_ppl / baseline_ppl))
+    absolute = 1 / improved_ppl
 
-    # Apply thresholding as described in Equation (7)
-    # if I < 0.05:
-    #     reward = 0.0
-    # elif I < 1:
-    #     reward = 0.5
-    # elif I < 2:
-    #     reward = 0.9
-    # else:
-    #     reward = 1.0
-    reward = max(-1, I)
+    reward = relative if tpe == 'relative' else (relative + absolute) / 2 if tpe == 'hybrid' else absolute
 
     print("---- VR-CLI Reward Debug ----")
     print(f"Baseline PPL (y|x): {baseline_ppl}")
     print(f"Improved PPL (y|x, a): {improved_ppl}")
-    print(f"Improvement I (%): {I}")
+    print(f"Relative Improvement (I): {relative}")
+    print(f"Absolute Improvement (I): {absolute}")
+    print(f"Hybrid Improvement (I): {(relative + absolute) / 2}")
+    print(f"Reward Type: {tpe}")
     print(f"Assigned Reward: {reward}", flush=True)
     print("-----------------------------")
 
@@ -170,9 +177,6 @@ def vr_cli_reward_func(prompts, completions, answer, **kwargs) -> list[float]:
     for prompt, comp, ans in zip(prompts, completions, answer):
         question = prompt[1]['content']
         context = comp[0]['content']
-        print(f"Question: {question}")
-        print(f"Context: {context}")
-        print(f"Answer: {ans}")
         reward = compute_vr_cli_reward(question, ans, context)
         rewards.append(reward)
     return rewards

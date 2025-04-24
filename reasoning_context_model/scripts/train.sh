@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --job-name=debug_print_no_thresh
-#SBATCH --output=slurm_output/debug_print_no_thresh.txt
+#SBATCH --job-name=debug
+#SBATCH --output=slurm_output/debug.txt
 #SBATCH --partition=p_nlp
 #SBATCH --gpus=1
 #SBATCH --cpus-per-task=1

@@ -10,6 +10,7 @@ PatchFastRL("GRPO", FastLanguageModel)
 
 from trl import GRPOConfig, GRPOTrainer
 from unsloth import is_bfloat16_supported
+from functools import partial
 
 from rewards import k_likelihood_reward_func, correctness_reward_func, vr_cli_reward_func
 from models import context_model, context_tokenizer
@@ -33,31 +34,33 @@ training_args = GRPOConfig(
     num_generations = 6, # Decrease if out of memory
     max_prompt_length = 512,
     max_completion_length = 1024,
-    num_train_epochs = 2, # Set to 1 for a full training run
+    num_train_epochs = 1, # Set to 1 for a full training run
     # max_steps=300,
     max_grad_norm = 0.1,
     report_to = "wandb", # Can use Weights & Biases
-    output_dir = "ppl",
+    output_dir = "ppl_gsm8k_relative_full",
     eval_strategy = "steps",
-    eval_steps = 50,
+    eval_steps = 100,
     eval_on_start = True,
     per_device_eval_batch_size = 1,
     save_strategy = "steps",
-    save_steps = 400,
+    save_steps = 500,
 )
 
-# Set up the trainer using the context model Q and our new reward function.
+reward_type = "relative"
+dataset_name = "gsm8k"
+
 trainer = CustomGRPOTrainer(
     model=context_model,
     processing_class=context_tokenizer,
-    reward_funcs=[vr_cli_reward_func],
+    reward_funcs=[partial(vr_cli_reward_func, reward_type=reward_type)],
     args=training_args,
     train_dataset=train_dataset,
     eval_dataset=eval_dataset,
-    # compute_metrics=True
+    reward_type=reward_type,
 )
 
 trainer.train()
 trainer.evaluate()
 
-context_model.save_lora("ppl_full")
+context_model.save_lora(f"ppl_{reward_type}_{dataset_name}_{'full' if training_args.num_train_epochs else 'debug'}")

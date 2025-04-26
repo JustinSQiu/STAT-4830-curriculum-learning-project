@@ -15,6 +15,18 @@ base_model, base_tokenizer = FastLanguageModel.from_pretrained(
 for param in base_model.parameters():
     param.requires_grad = False
 
+small_base_model, small_base_tokenizer = FastLanguageModel.from_pretrained(
+    model_name = "meta-llama/Llama-3.2-1B-Instruct",
+    max_seq_length = 2048,
+    load_in_4bit = True, # False for LoRA 16bit
+    fast_inference = True, # Enable vLLM fast inference
+    max_lora_rank = lora_rank,
+    gpu_memory_utilization = 0.3, # Reduce if out of memory
+)
+for param in small_base_model.parameters():
+    param.requires_grad = False
+
+
 context_model, context_tokenizer = FastLanguageModel.from_pretrained(
     model_name = "meta-llama/Llama-3.1-8B-Instruct",
     max_seq_length = 1024,

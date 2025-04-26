@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 import math
 
-from models import base_model, base_tokenizer
+from models import base_model, base_tokenizer, small_base_model, small_base_tokenizer
 
 def compute_stable_probability_reward(question, context, answer):
     print(f"Question: {question}")
@@ -86,34 +86,37 @@ def correctness_reward_func(prompts, completions, answer, **kwargs) -> list[floa
     return rewards
 
 
-def compute_ppl(prompt: str, continuation: str) -> float:
+def compute_ppl(prompt: str, continuation: str, model='base') -> float:
+    print(f'Using model: {model}')
+    model = base_model if model == 'base' else small_base_model
+    tokenizer = base_tokenizer if model == 'base' else small_base_tokenizer
     full_input = prompt + continuation
     # Tokenize the prompt and full input separately
-    prompt_ids = base_tokenizer(
+    prompt_ids = tokenizer(
         prompt,
         return_tensors="pt",
         truncation=True,
-        max_length=base_model.config.max_position_embeddings,
+        max_length=model.config.max_position_embeddings,
     ).input_ids
-    full_input_ids = base_tokenizer(
+    full_input_ids = tokenizer(
         full_input,
         return_tensors="pt",
         truncation=True,
-        max_length=base_model.config.max_position_embeddings,
+        max_length=model.config.max_position_embeddings,
     ).input_ids
     prompt_len = prompt_ids.shape[-1]
-    input_ids = full_input_ids.to(base_model.device)
+    input_ids = full_input_ids.to(model.device)
 
     with torch.no_grad():
-        outputs = base_model(input_ids, output_hidden_states=True)
+        outputs = model(input_ids, output_hidden_states=True)
     # Check if the logits need to be projected through lm_head
-    if outputs.logits.shape[-1] != base_model.config.vocab_size:
+    if outputs.logits.shape[-1] != model.config.vocab_size:
         hidden_states = outputs.hidden_states[-1]
-        logits = base_model.lm_head(hidden_states)
+        logits = model.lm_head(hidden_states)
     else:
         logits = outputs.logits
 
-    vocab_size = base_model.config.vocab_size
+    vocab_size = model.config.vocab_size
     # Align logits: each logits[i] predicts token[i+1]
     log_probs = F.log_softmax(logits[:, :-1, :], dim=-1)
     target_token_ids = input_ids[:, 1:]
@@ -129,7 +132,7 @@ def compute_ppl(prompt: str, continuation: str) -> float:
     perplexity = math.exp(-avg_log_prob)
     return perplexity
 
-def compute_vr_cli_reward(question: str, answer: str, context: str, tpe='relative') -> float:
+def compute_vr_cli_reward(question: str, answer: str, context: str, tpe='relative', model='base') -> float:
     """
     I = [1 - (PPL(y|x, a) / PPL(y|x))] * 100,
     
@@ -150,8 +153,8 @@ def compute_vr_cli_reward(question: str, answer: str, context: str, tpe='relativ
     print(f"Improved Prompt: {improved_prompt}", flush=True)
     print(f"Answer: {answer}", flush=True)
 
-    baseline_ppl = compute_ppl(baseline_prompt, answer)
-    improved_ppl = compute_ppl(improved_prompt, answer)
+    baseline_ppl = compute_ppl(baseline_prompt, answer, model)
+    improved_ppl = compute_ppl(improved_prompt, answer, model)
 
     # Compute the improvement percentage I.
     # A positive I means that conditioning on the detailed plan lowered perplexity.
@@ -172,12 +175,12 @@ def compute_vr_cli_reward(question: str, answer: str, context: str, tpe='relativ
 
     return reward
 
-def vr_cli_reward_func(prompts, completions, answer, **kwargs) -> list[float]:
+def vr_cli_reward_func(prompts, completions, answer, tpe='relative', model=base, **kwargs) -> list[float]:
     rewards = []
     for prompt, comp, ans in zip(prompts, completions, answer):
         question = prompt[1]['content']
         context = comp[0]['content']
-        reward = compute_vr_cli_reward(question, ans, context)
+        reward = compute_vr_cli_reward(question, ans, context, tpe=tpe, model=model)
         rewards.append(reward)
     return rewards
 

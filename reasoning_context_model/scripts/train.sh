@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --job-name=train_absolute
-#SBATCH --output=slurm_output/train_absolute.txt
+#SBATCH --job-name=train_small_relative
+#SBATCH --output=slurm_output/train_small_relative.txt
 #SBATCH --partition=p_nlp
 #SBATCH --gpus=1
 #SBATCH --cpus-per-task=1
@@ -25,4 +25,8 @@ huggingface-cli login --token "$HUGGINGFACE_TOKEN"
 wandb login --relogin "$WANDB_TOKEN"
 
 
-python ../train.py
+python ../train.py --reward_type relative --dataset_name gsm8k --model small
+
+# python ../train.py --reward_type hybrid --dataset_name gsm8k
+
+# python ../train.py --reward_type absolute --dataset_name gsm8k

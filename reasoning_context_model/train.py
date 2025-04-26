@@ -1,4 +1,5 @@
 import os
+import argparse
 
 os.environ["HF_HOME"] = "/nlp/data/huggingface_cache"
 
@@ -10,12 +11,23 @@ PatchFastRL("GRPO", FastLanguageModel)
 
 from trl import GRPOConfig, GRPOTrainer
 from unsloth import is_bfloat16_supported
-from functools import partial
+from functools import partial, update_wrapper
 
 from rewards import k_likelihood_reward_func, correctness_reward_func, vr_cli_reward_func
 from models import context_model, context_tokenizer
 from data import context_dataset as dataset, context_eval_dataset as eval_dataset, context_train_dataset as train_dataset
 from custom_grpo_trainer import CustomGRPOTrainer
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="GRPO training script.")
+    parser.add_argument('--reward_type', type=str, choices=['relative', 'absolute', 'hybrid'], default='absolute',
+                        help='Type of reward to use (relative, absolute, or hybrid).')
+    parser.add_argument('--dataset_name', type=str, default='gsm8k', help='Name of the dataset.')
+    parser.add_argument('--model', type=str, default='base', help='Model to use.')
+    return parser.parse_args()
+
+args = parse_args()
+
 
 training_args = GRPOConfig(
     use_vllm = True, # use vLLM for fast inference!
@@ -38,7 +50,7 @@ training_args = GRPOConfig(
     # max_steps=300,
     max_grad_norm = 0.1,
     report_to = "wandb", # Can use Weights & Biases
-    output_dir = "ppl_gsm8k_absolute_full",
+    output_dir=f"ppl_{args.reward_type}_{args.dataset_name}_{args.model}_full",
     eval_strategy = "steps",
     eval_steps = 100,
     eval_on_start = True,
@@ -47,20 +59,22 @@ training_args = GRPOConfig(
     save_steps = 500,
 )
 
-reward_type = "absolute" # Choose from 'relative', 'absolute', or 'hybrid'
-dataset_name = "gsm8k"
+# hacky method, otherwise rewarad func metadata won't be preserved by partial
+rf = partial(vr_cli_reward_func, reward_type=args.reward_type, model=args.model)
+rf = update_wrapper(rf, vr_cli_reward_func)
 
 trainer = CustomGRPOTrainer(
     model=context_model,
     processing_class=context_tokenizer,
-    reward_funcs=[partial(vr_cli_reward_func, reward_type=reward_type)],
+    reward_funcs=[rf],
     args=training_args,
     train_dataset=train_dataset,
     eval_dataset=eval_dataset,
-    reward_type=reward_type,
+    reward_type=args.reward_type,
+    model_type=args.model,
 )
 
 trainer.train()
 trainer.evaluate()
 
-context_model.save_lora(f"ppl_{reward_type}_{dataset_name}_{'full' if training_args.num_train_epochs else 'debug'}")
+context_model.save_lora(f"ppl_{args.reward_type}_{args.dataset_name}_{args.model}_{'full' if training_args.num_train_epochs else 'debug'}")

@@ -1,5 +1,5 @@
 from trl import GRPOTrainer
-from models import base_model, base_tokenizer
+from models import base_model, base_tokenizer, small_base_model, small_base_tokenizer
 from rewards import compute_vr_cli_reward
 import torch.nn.functional as F
 from vllm import SamplingParams
@@ -13,6 +13,8 @@ class CustomGRPOTrainer(GRPOTrainer):
     def __init__(self, *args, **kwargs):
         self.reward_type = kwargs.get("reward_type", "relative")
         del kwargs["reward_type"]
+        self.model_type = kwargs.get("model_type", "base")
+        del kwargs["model_type"]
         if self.reward_type not in ["relative", "absolute", "hybrid"]:
             raise ValueError("Invalid reward type. Choose from 'relative', 'absolute', or 'hybrid'.")
         super().__init__(*args, **kwargs)
@@ -27,6 +29,8 @@ class CustomGRPOTrainer(GRPOTrainer):
             top_p=0.95,
             max_tokens=self.max_completion_length,
         )
+        self.base_model = base_model if self.model_type == "base" else small_base_model
+        self.base_tokenizer = base_tokenizer if self.model_type == "base" else small_base_tokenizer
 
     def evaluate(self, eval_dataset=None, **kwargs):
         print("Evaluating...")
@@ -36,7 +40,7 @@ class CustomGRPOTrainer(GRPOTrainer):
 
         # Set models to eval mode
         self.model.eval()
-        base_model.eval()
+        self.base_model.eval()
 
         correct = 0
         total = 0
@@ -59,8 +63,20 @@ class CustomGRPOTrainer(GRPOTrainer):
                 sampling_params=self._ctx_sampling_params,
             )[0].outputs[0].text.strip()
 
+            messages = [
+                {"role": "system", "content": "Generate only the answer. Do not include any other text besides the final number."},
+                {"role": "user", "content": f"{prompt}\n{context_text}\nThe final answer is: "},
+                # {"role": "user", "content": f"{prompt}\n{context_text}"},
+            ]
+            t = apply_chat_template({"messages": messages}, self.processing_class)
+            answer_text = self.base_model.fast_generate(
+                t["text"],
+                sampling_params=self._ans_sampling_params,
+            )[0].outputs[0].text.strip()
+
+
             ans_prompt = f"{prompt}\n{context_text}\n"
-            answer_text = base_model.fast_generate(
+            answer_text = self.base_model.fast_generate(
                 ans_prompt,
                 sampling_params=self._ans_sampling_params,
             )[0].outputs[0].text.strip()

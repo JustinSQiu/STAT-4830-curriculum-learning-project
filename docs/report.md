@@ -39,6 +39,7 @@ I also got the TinyZero code working (which took a lot of debugging VERL). Howev
 
 All the code is in the two submodules.
 
+Apr 22, 2025
 Presentation Outline
 Fundamental question: how to design rewards for reinforcement learning in LLMs?
 Overview of past experiments (layer freezing w/ curriculum learning, learning matrix inversions)
@@ -82,3 +83,272 @@ Reward hacking stuff
 Wrestling with the libraries, a couple things that aren’t well document but common problems
 TRL doesn’t support custom eval_function? Need to override yourself
 Problems with unsloth using multiple gpus
+
+
+Experiments:
+Gsm8k and Hellaswag
+Help vs no help
+Absolute perplexity vs relative perplexity vs both
+Add scheduled perplexity?
+Interesting: gsm8k absolute perplexity needed help; otherwise it wouldn’t work
+Apr 21, 2025
+
+Just revamping the codebase
+Introduced new reward https://arxiv.org/pdf/2503.22828
+
+Mar 25, 2025
+
+Linear algebra tool use
+Tell it 3 basic matrix operations:
+Multiple row with nonzero constant
+Add constant * row to another row
+Swap two rows
+Iteratively query it
+Can it do matrix RREF?
+
+New idea:
+Assumption: for most contexts, P_base (Answer | Context, Question) is high
+Thus train a model q to generate (Context | Question)
+Using reward function r = -log(p_base (Answer | Context, Question))
+Where answer is the desired answer
+
+STAT 4830 Stuff
+
+if you give it 3 by 3 perturbation of identity
+try it on arbitrary 2 by 2
+symbolic 
+code continous reward: embedding
+
+https://x.com/wzhao_nlp/status/1896962009918525730
+
+test how much generalization I have
+
+how to know what the rules I’m discovering
+Don’t tell it to invert a matrix
+Give it basic operations on matrix
+Number of steps for applying these rules
+
+Haddamar matrix: one way to convert matrix to dimension 2^k for every single k
+Conjecture: In general there’s Haddamar matrices in 4*k for every k
+5 different rules to get new Haddamar matrix over old one
+loop the model for each step
+
+first, test generalization by giving it other types of matrices
+
+give it basic operations on how to invert a matrix
+ie flip two rows, 
+
+1. Test generalization
+2. Given basic operations, invert a matrix
+    1. To tell whether it actually understands the rules it’s discovering
+
+
+Presentation
+Intro/overview
+Motivation: base LLMs are not very good at linear algebra. If you try to ask it to some basic operation like inverting a 2 by 2 matrix, it won’t be able to do that unless it has tool use with a scientific calculator or coding, or it’s a big model specifically trained for reasoning
+Preface by saying that a lot of the experiments I’m showing are incomplete, sorry about that, I changed my topic several times so was scrambling this week to get at least some results. So sorry in advance for the incomplete results.
+Reinforcement learning w/ LLMs
+Deepseek explanation: few months ago R1 was able to use RL with purely rules-based rewards to train a reasoning model that was state of the art
+Explanation of traditional finetuning: usually SFT or RLHF
+Apply this paradigm to teaching small LLMs things difficult tasks that they can’t do initially by providing them with the correct rewards and designing a curriculum to learn difficult multi-step or difficulty ramping up tasks
+Linear algebra tasks: easy to synthetically generate data -> continuous self improvement, easy to verify, useful, cannot be done currently (will talk about later)
+Model fails at many linear algebra tasks
+Show results from paper a while ago like inverse and RREF
+Can we do better?
+Attempt 0: naive, fails for both RREF and inversion
+Explain reward
+RREF reward hacking photo
+Just gives up because task is too hard
+Gave it a length reward and it spits out random Java code
+Problem: limited GPU memory
+Only thing it learned was going longer, everything else was a fail
+Attempt 1: designing reward, reward hacking, sparse rewards
+Explain rewards that I tried for matrix inversion
+Binary correctness
+Continuous correctness
+Format
+Integers
+Still not good enough, show chart
+Attempt 2: curriculum learning, start with easier task
+Sherman-Morrison-style
+Curriculum: explain curriculum
+Start with 1 by 1 and diagonal matrices, this obviously was very easy
+Start with 2 by 2 perturbations from identity
+Random 2 by 2 matrices
+Random n by n matrices
+Layer freezing experiments
+Initial goal of project but was changed, will present some interesting results.
+
+Mar 2, 2025
+linked length generation but for linear algebra
+can do some linear algebra concept in a curriculum way like matrix inverse 3 by 3 to 4 by 4 etccurriculum learning by making it harder and harder
+no need to benchmark it, just show that we can learn it with this simple method
+experiment: gpt-4 can actually do matrix inversions—possibly tool use?
+
+ideas: curriculum learning with matrix algebra
+- implement the reward
+
+Interesting: reward hacking b/c it always guesses the identity matrix.
+
+Sometimes, it just gives up…
+
+Unrelated Java code…
+
+I added a length reward and it immediately started spewing nonsense like Javascript code and running in a loop
+Problem: not enough GPU memory lol
+The only thing it learns is thinking for longer
+
+
+
+A lot of Chinese output
+
+Feb 22, 2025
+continuous self-improvement
+
+program synthesis: given inputs and outputs, give function
+then check by running in python
+one variable, generate power functions
+
+have func that goes from ints to ints
+I want function to have f(0) = 1, f(1) = 2, etc
+just see if it can learn this simple example
+
+ndea, did keras, working on program synthesis
+
+compilation reward: 0.1
+answer is correct
+error could be like mean squared error
+how to design the right reward function
+learn 2^k function
+
+
+TODO
+Update slides
+Try program synthesis with DeepSeek
+ 
+2/4 meeting notes
+Write report on md not latex
+Try new approach? Problem with GPU right now
+
+aws
+lambda labs
+hyperbolic
+sfcompute
+
+use pytorch stpa
+scaled dot product attention
+try to code it up myself
+
+use a100 is enough 
+will brown twitter
+onsloth
+custom trident kernels
+daniel han 
+
+khush
+
+Parameter Efficient Reinforcement Learning for LLMs
+
+Using methods similar to Deepseek but only tuning certain layers, see performance
+Basically steps:
+Get pretrained model
+Implement RL similar to Deepseek
+Train model on curriculum learning dataset with progressive layer freezing
+Maybe I can do math? So can use synthetic data
+
+
+GPU Commands
+Switch to GPU
+srun --nodelist=nlpgpu01 --pty --gpus=1 --mem=64GB zsh
+
+Create Conda Environment
+conda create -n “name”
+Delete Conda Environment
+conda env remove -n name
+Clone Conda Environment
+conda create --name name --clone name
+Activate Conda environment
+Conda activate name
+
+Check currently running jobs 
+squeue
+
+Run job
+Sbatch job.sh
+
+Check resources for each node 
+sinfo
+
+Check RAM 
+free -h
+
+Check CPU and running processes 
+top (or htop if installed)
+
+Check GPU usage 
+nvidia-smi
+
+Might need to 
+source ~/.bashrc
+After starting srun before doing conda activate env
+1/27 meeting notes
+doing pretraining outside a lab is hard
+
+don’t do pretraining; we have good enough models for that
+get minimal demo to do RL faster with model
+
+Currently what people are doing basic RL
+Experiments are still very expensive
+How to train an RL model
+
+Deepseek R1 0: base model they started with
+
+sample from data
+for each rollout look at reward rollout
+weight gradient of log of language model by that reward
+
+take tinyzero, get it running on my computer, but freezing some layers in the computation
+
+maybe use some synthetic data
+
+how to extract the info from the language model by adding more context 
+
+make open source models easier to modify so they reason better
+
+how to steer a language model to do what you want
+use a smaller language model
+
+finetune by training only one layer -> see if works very well
+
+
+Previous idea
+Training model while focusing on specific layers, and giving it real curriculum for preschool to college level
+Ie first grade level has a high learning rate for first encoder layer but lower for subsequent layers, second grade has high for second and lower for others, like a normal distribution maybe
+
+Curriculum learning
+https://aclanthology.org/volumes/2023.conll-babylm/ 
+https://arxiv.org/abs/2309.05463 
+
+
+Freezing layers during finetuning
+Surgical finetuning: https://arxiv.org/abs/2210.11466
+https://arxiv.org/pdf/1911.03090 
+https://aclanthology.org/2024.naacl-long.345/
+
+Layer Freezing & Data Sieving: Missing Pieces of a Generic Framework for Sparse Training: https://arxiv.org/abs/2209.11204
+
+Accelerating Training of Transformer-Based Language Models with Progressive Layer Dropping: https://arxiv.org/abs/2010.13369
+
+AutoFreeze: Automatically Freezing Model Blocks to Accelerate Fine-tuning: https://arxiv.org/abs/2102.01386
+
+
+
+Greedy layer-wise training: https://proceedings.neurips.cc/paper_files/paper/2006/file/5da713a690c067105aeb2fae32403405-Paper.pdf
+Freezeout: https://arxiv.org/abs/1706.04983
+
+Learning rate decay
+
+Curriculum learning: training on examples of increasing difficulty
+Freezing layers during training improves efficiency and possibly helps generalize better (see surgical finetuning paper)
+
+

@@ -146,7 +146,7 @@ def compute_vr_cli_reward(question: str, answer: str, context: str, tpe='relativ
         raise ValueError("Invalid type. Choose from 'relative', 'absolute', or 'hybrid'.")
     # Baseline: probability of the chapter given the story info only.
     baseline_prompt = f"{question}\n"
-    improved_prompt = f"{question}\n{context}\n"
+    improved_prompt = f"{question}\n{context}\nThe final answer is: "
 
     print(f"Question: {question}", flush=True)
     print(f"Baseline Prompt: {baseline_prompt}", flush=True)
@@ -175,7 +175,7 @@ def compute_vr_cli_reward(question: str, answer: str, context: str, tpe='relativ
 
     return reward
 
-def vr_cli_reward_func(prompts, completions, answer, tpe='relative', model=base, **kwargs) -> list[float]:
+def vr_cli_reward_func(prompts, completions, answer, tpe='relative', model='base', **kwargs) -> list[float]:
     rewards = []
     for prompt, comp, ans in zip(prompts, completions, answer):
         question = prompt[1]['content']

@@ -59,7 +59,7 @@ training_args = GRPOConfig(
     save_steps = 500,
 )
 
-# hacky method, otherwise rewarad func metadata won't be preserved by partial
+# hacky method, otherwise reward func metadata won't be preserved by partial
 rf = partial(vr_cli_reward_func, reward_type=args.reward_type, model=args.model)
 rf = update_wrapper(rf, vr_cli_reward_func)
 

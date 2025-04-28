@@ -81,7 +81,7 @@ class CustomGRPOTrainer(GRPOTrainer):
                 sampling_params=self._ans_sampling_params,
             )[0].outputs[0].text.strip()
 
-            print(f"Answer: {answer_text}")
+            print(f"Predicted Answer: {answer_text}")
 
             # with torch.no_grad():
             #     inputs = self.processing_class( # encode
@@ -134,13 +134,13 @@ class CustomGRPOTrainer(GRPOTrainer):
                     correct += 1
 
             # 5. Reward
-            reward_list = compute_vr_cli_reward(
+            reward = compute_vr_cli_reward(
                 question=prompt,
                 answer=true_answer,
                 context=context_text,
-                tpe= self.reward_type,
+                tpe=self.reward_type,
             )
-            total_reward += (reward_list[0] if isinstance(reward_list, (list, tuple)) else float(reward_list))
+            total_reward += reward
 
             # # 6. Compute NLL manually instead of using fused cross-entropy
             # if answer_text:

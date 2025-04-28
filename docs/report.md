@@ -38,3 +38,47 @@ I have gotten access to 2 RTX A6000 GPUs and have finally been able to run train
 I also got the TinyZero code working (which took a lot of debugging VERL). However, because of GPU memory limitations I made the batch size a lot smaller and that resulted in a very poor performance, so I think I will use the implementation above.
 
 All the code is in the two submodules.
+
+Presentation Outline
+Fundamental question: how to design rewards for reinforcement learning in LLMs?
+Overview of past experiments (layer freezing w/ curriculum learning, learning matrix inversions)
+See past slides
+Maybe skip this
+Started with hard verifiers, domain of linalg allows for that
+2exp(normL1(inv-inv*)tol)
+Explanation of GRPO and training with verifiable rewards
+Will be quick, seems like everyone’s gonna explain it
+How to create general rewards?
+Hypothesis: explain the prompt hypothesis
+Train a prompt model then use a base model to output answer
+Log likelihood/perplexity methods
+Explain the formulation
+How to calculate? Get logits of only answer tokens, take negative log likelihood, normalize by output length
+
+How to transform from [-inf, 1] to a stable reward?
+Lower bound at -1
+Thresholding
+Also using absolute rewards
+Reward=max(0, PPLG(y|x) - PPLG(y|x, a)PPLG(y|x)) + 1PPLG(y|x, a)2
+Why this works, why do we want this?
+Typical rewards: discontinuous and rules-based; ie 2 + 2 = 4 is easy to validate
+BUT: for things like code, natural language, etc. there isn’t an easy way to implement rules-based rewards
+Thus this method can be used to generate continuous reward while leveraging 
+Training the model
+Dataset - gsm8k, also hellaswag
+Explain what the dataset is
+Hyperparameters and optimization choices
+Using parameter efficient methods to fit into GPU
+Used Lora to learn fewer parameters by attaching low rank matrices instead of updating all weights
+Used 4-bit quantized models; otherwise the 7B model will OOM my GPU
+Other stuff: Learning rate, adam, weight decay, warmup, cosine lr scheduler, etc.
+Implementation details
+Results and evaluation
+Show plots
+Show some generation examples
+Reflection, learned lessons/roadblocks
+Stuff about working with GPUs
+Reward hacking stuff
+Wrestling with the libraries, a couple things that aren’t well document but common problems
+TRL doesn’t support custom eval_function? Need to override yourself
+Problems with unsloth using multiple gpus

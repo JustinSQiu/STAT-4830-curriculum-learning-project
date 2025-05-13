@@ -184,6 +184,24 @@ def vr_cli_reward_func(prompts, completions, answer, tpe='relative', model='base
         rewards.append(reward)
     return rewards
 
+def vr_cli_reward_func_hybrid(prompts, completions, answer, tpe='hybrid', model='base', **kwargs) -> list[float]:
+    rewards = []
+    for prompt, comp, ans in zip(prompts, completions, answer):
+        question = prompt[1]['content']
+        context = comp[0]['content']
+        reward = compute_vr_cli_reward(question, ans, context, tpe=tpe, model=model)
+        rewards.append(reward)
+    return rewards
+
+def vr_cli_reward_func_absolute(prompts, completions, answer, tpe='absolute', model='base', **kwargs) -> list[float]:
+    rewards = []
+    for prompt, comp, ans in zip(prompts, completions, answer):
+        question = prompt[1]['content']
+        context = comp[0]['content']
+        reward = compute_vr_cli_reward(question, ans, context, tpe=tpe, model=model)
+        rewards.append(reward)
+    return rewards
+
 
 
 

@@ -20,3 +20,4 @@ wandb/
 scripts/secrets.env
 
 __pycache__/
+keys.py

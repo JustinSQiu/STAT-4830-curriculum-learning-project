@@ -5,7 +5,7 @@ max_seq_length = 2048
 lora_rank = 16
 
 base_model, base_tokenizer = FastLanguageModel.from_pretrained(
-    model_name = "meta-llama/Llama-3.1-8B-Instruct",
+    model_name = "Qwen/Qwen2.5-0.5B-Instruct",
     max_seq_length = 2048,
     load_in_4bit = True, # False for LoRA 16bit
     fast_inference = True, # Enable vLLM fast inference
@@ -16,7 +16,7 @@ for param in base_model.parameters():
     param.requires_grad = False
 
 small_base_model, small_base_tokenizer = FastLanguageModel.from_pretrained(
-    model_name = "meta-llama/Llama-3.2-1B-Instruct",
+    model_name = "Qwen/Qwen2.5-0.5B-Instruct",
     max_seq_length = 2048,
     load_in_4bit = True, # False for LoRA 16bit
     fast_inference = True, # Enable vLLM fast inference
@@ -28,12 +28,12 @@ for param in small_base_model.parameters():
 
 
 context_model, context_tokenizer = FastLanguageModel.from_pretrained(
-    model_name = "meta-llama/Llama-3.1-8B-Instruct",
+    model_name = "Qwen/Qwen2.5-0.5B-Instruct",
     max_seq_length = 1024,
     load_in_4bit = True, # False for LoRA 16bit
     fast_inference = True, # Enable vLLM fast inference
     max_lora_rank = lora_rank,
-    gpu_memory_utilization = 0.6, # Reduce if out of memory
+    gpu_memory_utilization = 0.3, # Reduce if out of memory
 )
 
 context_model = FastLanguageModel.get_peft_model(

@@ -13,7 +13,7 @@ from trl import GRPOConfig, GRPOTrainer
 from unsloth import is_bfloat16_supported
 from functools import partial, update_wrapper
 
-from rewards import k_likelihood_reward_func, correctness_reward_func, vr_cli_reward_func
+from rewards import k_likelihood_reward_func, correctness_reward_func, vr_cli_reward_func, vr_cli_reward_func_hybrid, vr_cli_reward_func_absolute
 from models import context_model, context_tokenizer
 from data import context_dataset as dataset, context_eval_dataset as eval_dataset, context_train_dataset as train_dataset
 from custom_grpo_trainer import CustomGRPOTrainer
@@ -50,7 +50,7 @@ training_args = GRPOConfig(
     # max_steps=300,
     max_grad_norm = 0.1,
     report_to = "wandb", # Can use Weights & Biases
-    output_dir=f"ppl_{args.reward_type}_{args.dataset_name}_{args.model}_full",
+    output_dir=f"ppl_{args.reward_type}_{args.dataset_name}_{args.model}_full_test",
     eval_strategy = "steps",
     eval_steps = 100,
     eval_on_start = True,
@@ -60,8 +60,12 @@ training_args = GRPOConfig(
 )
 
 # hacky method, otherwise reward func metadata won't be preserved by partial
-rf = partial(vr_cli_reward_func, reward_type=args.reward_type, model=args.model)
-rf = update_wrapper(rf, vr_cli_reward_func)
+# rf = partial(vr_cli_reward_func, reward_type=args.reward_type, model=args.model)
+# rf = update_wrapper(rf, vr_cli_reward_func)
+
+rf = vr_cli_reward_func_hybrid if args.reward_type == 'hybrid' else (
+    vr_cli_reward_func_absolute if args.reward_type == 'absolute' else vr_cli_reward_func
+)
 
 trainer = CustomGRPOTrainer(
     model=context_model,
@@ -77,4 +81,4 @@ trainer = CustomGRPOTrainer(
 trainer.train()
 trainer.evaluate()
 
-context_model.save_lora(f"ppl_{args.reward_type}_{args.dataset_name}_{args.model}_{'full' if training_args.num_train_epochs else 'debug'}")
+context_model.save_lora(f"ppl_{args.reward_type}_{args.dataset_name}_{args.model}_{'full' if training_args.num_train_epochs else 'debug'}_test")

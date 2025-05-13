@@ -1,4 +1,4 @@
-# Project Title
+# Designing Good Rewards for Reinforcement Learning on LLMs
 
 **Team Members:**
 

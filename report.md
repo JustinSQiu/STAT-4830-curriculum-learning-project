@@ -53,7 +53,9 @@ Our initial experiments used an absolute perplexity reward, which directly takes
 **Hybrid Perplexity Reward Formula:**
 
 $Reward = \alpha \cdot \text{Absolute Perplexity} + (1 - \alpha) \cdot \text{Relative Perplexity}$
+
 $Relative Perplexity = \max (0, \frac{PPL_\pi^G (y \vert x) - PPL_\pi^G (y \vert x, a)}{PPL_\pi^G (y \vert x)})$
+
 $Absolute Perplexity = \frac{1}{PPL_\pi^G(y \vert x, a)}$
 
 We also adopt a novel framework for reinforcement learning. While most current methods train a model directly with reinforcement learning to do reasoning, output formatted responses, etc., we instead train a reasoning model with GRPO to output reasoning traces that allow another frozen base model to just output the answer. The frozen base model provides both the final answer for our inputs and the logits necessary to calculate the perplexity reward for each update step of GRPO on our reasoning context model.

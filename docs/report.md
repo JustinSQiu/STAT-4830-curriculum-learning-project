@@ -1,354 +1,148 @@
-# Deepseek R1 and Parameter-Efficient RL Training for LLMs
-
-## Overview
-
-Deepseek R1 [DeepSeek-AI et al., 2025] recently introduced a novel way of training LLMs to reason better by using large-scale reinforcement learning on a pretrained model **without prior supervised finetuning**. They use **GRPO (Group Relative Policy Optimization)** to perform RL on their language model. GRPO samples multiple outputs from the current policy at each step and computes the advantage of each output against the reward model compared to the other outputs. Rather than using a neural reward model (which is common in current research), they use a rules-based reward function that considers factors such as mathematical accuracy, logical consistency, language consistency, and formatting. The language model is optimized using a loss function that accounts for both the advantage gained for each output from the updated policy and the KL divergence against a reference policy, preventing the model from deviating too far. GRPO might help improve performance with a sparse reward model over PPO.
-
-## Project Goals
-
-For my project, I will explore **parameter-efficient ways** to train language models using reinforcement learning. Typically, current methods update all parameters of the model during the RL backpropagation loop. I want to investigate if similar performance can be achieved by updating only a subset of the parameters. Some ideas include:
-
-1. **Updating Only the First or Last Few Layers**  
-   This idea has been explored with supervised finetuning methods. Researchers have found that performance can be maintained—or even improved—with far fewer weight updates than full finetuning [Lee et al., 2023, 2019].
-
-2. **Selective Layer Updates During Training**  
-   Selecting specific layers to update during training has been examined in the context of Supervised Finetuning (SFT) [Ardakani et al., 2024; Liu et al., 2021].
-
-3. **Optimization Tricks to Approximate Weight Updates**  
-   Inspired by LoRA [Hu et al., 2021] and its variants, this approach has been recently applied to RLHF by Sidahmed et al. [2024]. Their findings suggest that adapting LoRA both for training the reward model and updating the model's weights can achieve performance comparable to regular RLHF.
-
-I plan to focus on **math tasks** because:
-- Math tasks are relatively easy to work with.
-- Data is readily available or can be synthetically generated.
-- DeepSeek-R1 was designed for reasoning.
-- The reward model can be straightforward since math problems generally have well-defined answers.
-
-This problem is significant because the methods introduced by Deepseek-Math [Shao et al., 2024] and Deepseek-R1(-Zero) represent a shift in how we approach post-training. Their empirical results demonstrate that these methods can be very successful even with lower compute requirements. I will measure success by determining if a method that involves fewer weight updates (using the pure RL approach from Deepseek-R1-Zero) is effective.
-
-The main constraint for my project is **compute**. Finetuning even a small pretrained model can be computationally expensive, and my resources are limited. Additionally, working with the numerous recently released libraries—and attempting to replicate or extend their methods—is challenging. For example, I spent five hours trying to get [TinyZero](https://github.com/Jiayi-Pan/TinyZero) to train on a GPU cluster without success. I will likely need to meet with my professor for debugging advice.
-
-In terms of data, one idea is to use a **curriculum learning** approach to train the model by progressively introducing more challenging math problems. Potential data sources include:
-- The ACL workshop on curriculum learning [Warstadt et al., 2023]
-- Recent reasoning datasets like [OpenThoughts](https://huggingface.co/datasets/open-thoughts/OpenThoughts-114k)
-
-## Results and Next Steps
-
-I have gotten access to 2 RTX A6000 GPUs and have finally been able to run training! I replicated https://github.com/JustinSQiu/DeepSeekRL-Extended-Efficient/ and found similar results after finetuning Qwen 2.5 1.5B with GRPO as the repo author did. I also ran some simple experiments with freezing the first and last layer of the model. The results are disappointing so far, but I've only done very preliminary experiments. Will further discuss results in meeting on Tuesday!
-
-I also got the TinyZero code working (which took a lot of debugging VERL). However, because of GPU memory limitations I made the batch size a lot smaller and that resulted in a very poor performance, so I think I will use the implementation above.
-
-All the code is in the two submodules.
-
-Apr 22, 2025
-Presentation Outline
-Fundamental question: how to design rewards for reinforcement learning in LLMs?
-Overview of past experiments (layer freezing w/ curriculum learning, learning matrix inversions)
-See past slides
-Maybe skip this
-Started with hard verifiers, domain of linalg allows for that
-2exp(normL1(inv-inv*)tol)
-Explanation of GRPO and training with verifiable rewards
-Will be quick, seems like everyone’s gonna explain it
-How to create general rewards?
-Hypothesis: explain the prompt hypothesis
-Train a prompt model then use a base model to output answer
-Log likelihood/perplexity methods
-Explain the formulation
-How to calculate? Get logits of only answer tokens, take negative log likelihood, normalize by output length
-
-How to transform from [-inf, 1] to a stable reward?
-Lower bound at -1
-Thresholding
-Also using absolute rewards
-Reward=max(0, PPLG(y|x) - PPLG(y|x, a)PPLG(y|x)) + 1PPLG(y|x, a)2
-Why this works, why do we want this?
-Typical rewards: discontinuous and rules-based; ie 2 + 2 = 4 is easy to validate
-BUT: for things like code, natural language, etc. there isn’t an easy way to implement rules-based rewards
-Thus this method can be used to generate continuous reward while leveraging 
-Training the model
-Dataset - gsm8k, also hellaswag
-Explain what the dataset is
-Hyperparameters and optimization choices
-Using parameter efficient methods to fit into GPU
-Used Lora to learn fewer parameters by attaching low rank matrices instead of updating all weights
-Used 4-bit quantized models; otherwise the 7B model will OOM my GPU
-Other stuff: Learning rate, adam, weight decay, warmup, cosine lr scheduler, etc.
-Implementation details
-Results and evaluation
-Show plots
-Show some generation examples
-Reflection, learned lessons/roadblocks
-Stuff about working with GPUs
-Reward hacking stuff
-Wrestling with the libraries, a couple things that aren’t well document but common problems
-TRL doesn’t support custom eval_function? Need to override yourself
-Problems with unsloth using multiple gpus
-
-
-Experiments:
-Gsm8k and Hellaswag
-Help vs no help
-Absolute perplexity vs relative perplexity vs both
-Add scheduled perplexity?
-Interesting: gsm8k absolute perplexity needed help; otherwise it wouldn’t work
-Apr 21, 2025
-
-Just revamping the codebase
-Introduced new reward https://arxiv.org/pdf/2503.22828
-
-Mar 25, 2025
-
-Linear algebra tool use
-Tell it 3 basic matrix operations:
-Multiple row with nonzero constant
-Add constant * row to another row
-Swap two rows
-Iteratively query it
-Can it do matrix RREF?
-
-New idea:
-Assumption: for most contexts, P_base (Answer | Context, Question) is high
-Thus train a model q to generate (Context | Question)
-Using reward function r = -log(p_base (Answer | Context, Question))
-Where answer is the desired answer
-
-STAT 4830 Stuff
-
-if you give it 3 by 3 perturbation of identity
-try it on arbitrary 2 by 2
-symbolic 
-code continous reward: embedding
-
-https://x.com/wzhao_nlp/status/1896962009918525730
-
-test how much generalization I have
-
-how to know what the rules I’m discovering
-Don’t tell it to invert a matrix
-Give it basic operations on matrix
-Number of steps for applying these rules
-
-Haddamar matrix: one way to convert matrix to dimension 2^k for every single k
-Conjecture: In general there’s Haddamar matrices in 4*k for every k
-5 different rules to get new Haddamar matrix over old one
-loop the model for each step
-
-first, test generalization by giving it other types of matrices
-
-give it basic operations on how to invert a matrix
-ie flip two rows, 
-
-1. Test generalization
-2. Given basic operations, invert a matrix
-    1. To tell whether it actually understands the rules it’s discovering
-
-
-Presentation
-Intro/overview
-Motivation: base LLMs are not very good at linear algebra. If you try to ask it to some basic operation like inverting a 2 by 2 matrix, it won’t be able to do that unless it has tool use with a scientific calculator or coding, or it’s a big model specifically trained for reasoning
-Preface by saying that a lot of the experiments I’m showing are incomplete, sorry about that, I changed my topic several times so was scrambling this week to get at least some results. So sorry in advance for the incomplete results.
-Reinforcement learning w/ LLMs
-Deepseek explanation: few months ago R1 was able to use RL with purely rules-based rewards to train a reasoning model that was state of the art
-Explanation of traditional finetuning: usually SFT or RLHF
-Apply this paradigm to teaching small LLMs things difficult tasks that they can’t do initially by providing them with the correct rewards and designing a curriculum to learn difficult multi-step or difficulty ramping up tasks
-Linear algebra tasks: easy to synthetically generate data -> continuous self improvement, easy to verify, useful, cannot be done currently (will talk about later)
-Model fails at many linear algebra tasks
-Show results from paper a while ago like inverse and RREF
-Can we do better?
-Attempt 0: naive, fails for both RREF and inversion
-Explain reward
-RREF reward hacking photo
-Just gives up because task is too hard
-Gave it a length reward and it spits out random Java code
-Problem: limited GPU memory
-Only thing it learned was going longer, everything else was a fail
-Attempt 1: designing reward, reward hacking, sparse rewards
-Explain rewards that I tried for matrix inversion
-Binary correctness
-Continuous correctness
-Format
-Integers
-Still not good enough, show chart
-Attempt 2: curriculum learning, start with easier task
-Sherman-Morrison-style
-Curriculum: explain curriculum
-Start with 1 by 1 and diagonal matrices, this obviously was very easy
-Start with 2 by 2 perturbations from identity
-Random 2 by 2 matrices
-Random n by n matrices
-Layer freezing experiments
-Initial goal of project but was changed, will present some interesting results.
-
-Mar 2, 2025
-linked length generation but for linear algebra
-can do some linear algebra concept in a curriculum way like matrix inverse 3 by 3 to 4 by 4 etccurriculum learning by making it harder and harder
-no need to benchmark it, just show that we can learn it with this simple method
-experiment: gpt-4 can actually do matrix inversions—possibly tool use?
-
-ideas: curriculum learning with matrix algebra
-- implement the reward
-
-Interesting: reward hacking b/c it always guesses the identity matrix.
-
-Sometimes, it just gives up…
-
-Unrelated Java code…
-
-I added a length reward and it immediately started spewing nonsense like Javascript code and running in a loop
-Problem: not enough GPU memory lol
-The only thing it learns is thinking for longer
-
-
-
-A lot of Chinese output
-
-Feb 22, 2025
-continuous self-improvement
-
-program synthesis: given inputs and outputs, give function
-then check by running in python
-one variable, generate power functions
-
-have func that goes from ints to ints
-I want function to have f(0) = 1, f(1) = 2, etc
-just see if it can learn this simple example
-
-ndea, did keras, working on program synthesis
-
-compilation reward: 0.1
-answer is correct
-error could be like mean squared error
-how to design the right reward function
-learn 2^k function
-
+# Designing Good Rewards for Reinforcement Learning on LLMs
 
-TODO
-Update slides
-Try program synthesis with DeepSeek
- 
-2/4 meeting notes
-Write report on md not latex
-Try new approach? Problem with GPU right now
+**Team Member(s):** Justin Qiu
 
-aws
-lambda labs
-hyperbolic
-sfcompute
+## Executive Summary
 
-use pytorch stpa
-scaled dot product attention
-try to code it up myself
+Recent research such as DeepSeek R1 has demonstrated that reinforcement learning is a viable way to train large language models to achieve state-of-the-art in reasoning tasks without using traditional post-training techniques like supervised finetuning. This is achieved through the careful crafting of rewards that steer the language model towards more desirable behavior, as well as a new optimization objective called GRPO (Group Relative Policy Optimization), which is particularly effective when working with sparse rewards. R1 and various follow-up works have primarily focused on reasoning tasks such as mathematics and coding, where the correctness of an output is relatively easy to verify and rewards are therefore easier to design. However, there exists a large number of domains such as creative reasoning that do not lend themselves to easily crafted reward functions. In this project, I explore alternative reward modeling approaches that can work with more general domains that don't have obvious reward design. Specifically, I implement a perplexity-based reward model that uses a frozen pretrained LLM's output logits as the reward function, and demonstrate results on GSM8K, a math word problem dataset.
 
-use a100 is enough 
-will brown twitter
-onsloth
-custom trident kernels
-daniel han 
+## 1. Introduction/Background
 
-khush
+The dominant recipe for aligning large language models (LLMs) with human intent is reinforcement learning from human feedback (RLHF). In RLHF a reward model, trained on human-ranked completions, supplies a scalar signal and the policy is optimized with Proximal Policy Optimization (PPO). PPO’s clipped‐ratio surrogate objective keeps the new policy close to the reference model via an adaptive KL penalty, giving much better stability than vanilla policy-gradient methods and enabling many epochs of minibatch updates on the same samples. OpenAI’s InstructGPT demonstrated that a 1.3 B-parameter model fine-tuned with PPO-based RLHF could be preferred to the original 175 B GPT-3 on a wide variety of prompts. Despite its success, PPO incurs significant computational overhead because it must draw rollouts from the evolving policy at every gradient step. Direct Preference Optimization (DPO) reframes the RLHF objective so that the optimal policy can be reached with a single cross-entropy loss on preference pairs, bypassing online roll-outs altogether. By treating the base model as an implicit reward estimator, DPO derives a closed-form best-response and converts the RL problem into supervised contrastive fine-tuning. DPO is used more often than PPO in practice because it removes the need for explicit KL penalties, sampling, or reward‐model updates, making training as cheap and stable as ordinary finetuning.
 
-Parameter Efficient Reinforcement Learning for LLMs
+On the other hand, while PPO and DPO both rely on dense reward estimates, many reasoning tasks—math word problems, program synthesis, theorem proving—yield extremely sparse rewards (often only “correct / incorrect”). Group Relative Policy Optimization (GRPO), introduced in DeepSeek-Math and extended in DeepSeek-R1, tackles this setting by sampling groups of candidate completions for each prompt and computing advantages relative to the best answer in the group. Because the baseline is drawn from the same batch, the variance of the policy gradient shrinks, letting the optimizer learn from one-bit correctness signals without extra reward shaping. GRPO inherits PPO’s clipped objective but reduces memory by sharing value estimates across the group, enabling the first LLMs (R1-Zero and R1) to reach state-of-the-art reasoning scores without any supervised pre-training. The original R1 paper used primarily rules-based binary rewards and formatting rewards; some examples include a binary correctness reward, format rewards for adding tags for reasoning and answer, etc.
 
-Using methods similar to Deepseek but only tuning certain layers, see performance
-Basically steps:
-Get pretrained model
-Implement RL similar to Deepseek
-Train model on curriculum learning dataset with progressive layer freezing
-Maybe I can do math? So can use synthetic data
+## 2. Rewards for Linear Algebra
 
+I began my project by investigating a simpler domain: linear algebra. Specifically, I investigate whether GRPO with carefully crafted rewards can be effectively used to teach small language models how to do matrix inversion and reduction of a matrix to the reduced row echelon form.
 
-GPU Commands
-Switch to GPU
-srun --nodelist=nlpgpu01 --pty --gpus=1 --mem=64GB zsh
+**Problem Formulation:** Given \$A\$, find \$A^*\$ such that \$A \cdot A^* = I\$
 
-Create Conda Environment
-conda create -n “name”
-Delete Conda Environment
-conda env remove -n name
-Clone Conda Environment
-conda create --name name --clone name
-Activate Conda environment
-Conda activate name
+**Problem Setup:**
 
-Check currently running jobs 
-squeue
+This problem domain is easily verifiable and has fairly logical rewards. I use four rewards to shape the model:
 
-Run job
-Sbatch job.sh
+* Binary correctness reward: \$I(|A \cdot A^\* - I| < tolerance)\$
+* Row by row correctness: \$\sum\_x I(|A^\*\_x - A^{-1}\_x| < tol)\$ where \$A\_x\$ represents a row.
+* Continuous correctness: \$2 \cdot \exp(-\frac{||A^{-1} - A^\*||\_{L1}}{tol})\$
+* Various formatting rewards such as whether the output is a valid matrix, matrix shape correctness, etc.
 
-Check resources for each node 
-sinfo
+However, there were various reward hacking problems throughout the process that forced me to change the reward structure. For instance, I initially had a reward for length. However, the model reward hacked by outputting extremely repetitive outputs and even outputting code to solve the question, which artificially increases the length of the output.
 
-Check RAM 
-free -h
+I use GRPO to optimize the language model. I initially used VERL, but ran into many debugging difficulties due to lack of documentation, so I ended up using TRL and Huggingface Transformers as the base framework for finetuning. I use Qwen 1.5B as the base model. For data generation, I wrote synthetic matrix generation scripts that generate random n by n invertible matrices. I will discuss the hardware and implementation details more in the implementation section, along with my implementation details for the main experiment.
 
-Check CPU and running processes 
-top (or htop if installed)
+I focus my exploration on a subset of the problem, which is inverting 2 by 2 matrices that are a small perturbation away from identity. This is because the general n by n inversion problem turned out to be too difficult for the model to learn, possibly because of the small base model size and compute limitations.
 
-Check GPU usage 
-nvidia-smi
+Our model was able to achieve around 90% evaluation accuracy after 1000 training steps.
+Insert figure in figures/linalg_plot for me.
 
-Might need to 
-source ~/.bashrc
-After starting srun before doing conda activate env
-1/27 meeting notes
-doing pretraining outside a lab is hard
+![Linear Algebra Results](figures/linalg_plot.png)
 
-don’t do pretraining; we have good enough models for that
-get minimal demo to do RL faster with model
+## 3. Methodology for General Rewards
 
-Currently what people are doing basic RL
-Experiments are still very expensive
-How to train an RL model
+The rewards I used for solving linear algebra problems are not adaptable for a general domain. For instance, if we want a language model to be better at reasoning for creative story generation, it is not obvious how to verify the correctness of a given output or provide structured rewards for the LLM to follow. As such, in the next (main) phase of my project, I explored creating rewards that are adaptable for general domains. I focused on four key reward desirata: the reward should be generally applicable, informative, dense, and difficult to reward hack. Some examples of rewards that have been explored in previous literature include embeddings-based rewards and training a reward model (like RLHF).
 
-Deepseek R1 0: base model they started with
+The reward I focused on exploring is relative perplexity. Language models output logits, which are essentially unnormalized likelihoods of output tokens given the previous input sequence, which encode a lot of valuable information that can be extracted. In particular, perplexity can easily be calculated with the output logits of a model. Perplexity quantifies a model's uncertainty for a given sequence of tokens. A higher perplexity indicates that a model is less certain of a given output, while a lower perplexity means the model is more certain, meaning that we want desirable outputs to have a low perplexity. Perplexity gives us a reward function that is general purpose, informative, dense, and continuous, which is perfect for our purposes. Note that during the middle of my project, a paper by Gurung and Lapata (https://arxiv.org/abs/2503.22828) came out that uses a very similar reward function, so we used their approach as inspiration to refine our own.
 
-sample from data
-for each rollout look at reward rollout
-weight gradient of log of language model by that reward
+**Perplexity Formula:**
 
-take tinyzero, get it running on my computer, but freezing some layers in the computation
+$Perplexity(S) = \exp\left(-\frac{1}{N}\sum_{i=1}^{N}\log P(x_i | x_{<i})\right)$
 
-maybe use some synthetic data
+Our initial experiments used an absolute perplexity reward, which directly takes the perplexity of an output as the reward. However, this led to extremely unstable training, as perplexities of different outputs are difficult to compare against each other, and the scale of perplexity (1 to infinity) leads to very unstable rewards for high perplexity outputs. As such, we adopt a hybrid perplexity reward, which integrates both absolute perplexity and relative perplexity, which represents the relative improvement in perplexity for an output compared to a base output. An equation of our reward is shown below. We also clip the relative perplexity component on the left side by 0, as otherwise the perplexity reward can go to negative infinity for outputs that are significantly worse than baseline outputs, leading to unstable training.
 
-how to extract the info from the language model by adding more context 
+**Hybrid Perplexity Reward Formula:**
 
-make open source models easier to modify so they reason better
+$Reward = \alpha \cdot \text{Absolute Perplexity} + (1 - \alpha) \cdot \text{Relative Perplexity}$
 
-how to steer a language model to do what you want
-use a smaller language model
+$Relative Perplexity = \max (0, \frac{PPL_\pi^G (y \vert x) - PPL_\pi^G (y \vert x, a)}{PPL_\pi^G (y \vert x)})$
 
-finetune by training only one layer -> see if works very well
+$Absolute Perplexity = \frac{1}{PPL_\pi^G(y \vert x, a)}$
 
+We also adopt a novel framework for reinforcement learning. While most current methods train a model directly with reinforcement learning to do reasoning, output formatted responses, etc., we instead train a reasoning model with GRPO to output reasoning traces that allow another frozen base model to just output the answer. The frozen base model provides both the final answer for our inputs and the logits necessary to calculate the perplexity reward for each update step of GRPO on our reasoning context model.
+Our approach is based on the hypothesis that
+P_base(Answer | c, Question) is very high for multiple contexts c
 
-Previous idea
-Training model while focusing on specific layers, and giving it real curriculum for preschool to college level
-Ie first grade level has a high learning rate for first encoder layer but lower for subsequent layers, second grade has high for second and lower for others, like a normal distribution maybe
+Our new reinforcement learning setup has several key advantages compared to a single model approach. First, the base model and the reasoning context model can be different, allowing for potentially more efficient methods to be developed. For instance, it would be interesting to explore varying the size of reasoning context model and the base model, as only the reasoning context model is finetuned. Second, the new setup lends itself well to our perplexity reward. Since our relative perplexity reward requires a baseline output to compare to, giving the question directly to the frozen base model provides us with a reasonable baseline output.
 
-Curriculum learning
-https://aclanthology.org/volumes/2023.conll-babylm/ 
-https://arxiv.org/abs/2309.05463 
+![New Formulation](figures/new_formulation.png)
 
+**GRPO Formula:**
 
-Freezing layers during finetuning
-Surgical finetuning: https://arxiv.org/abs/2210.11466
-https://arxiv.org/pdf/1911.03090 
-https://aclanthology.org/2024.naacl-long.345/
+$L_{GRPO}(\theta) = \mathbb{E}_{t}\left[\min\left(r_t(\theta)A_t, \text{clip}(r_t(\theta), 1 - \epsilon, 1 + \epsilon)A_t\right)\right]$
 
-Layer Freezing & Data Sieving: Missing Pieces of a Generic Framework for Sparse Training: https://arxiv.org/abs/2209.11204
+We use GSM8K as our dataset for both training and evaluation. GSM8k is a representative math word problem dataset with problems that involve arithmetic and basic multi-step reasoning. GSM8k does indeed have clear and verifiable rewards that have been extensively explored; however, we choose to test our approach on GSM8k so that we can validate our results on a commonly used dataset.
 
-Accelerating Training of Transformer-Based Language Models with Progressive Layer Dropping: https://arxiv.org/abs/2010.13369
+## 4. Training Details
 
-AutoFreeze: Automatically Freezing Model Blocks to Accelerate Fine-tuning: https://arxiv.org/abs/2102.01386
+We do two experiments with this approach: one with large models and the other with small models. For the large models, we used Llama-3.2 8B instruct, and for the small models, we used Qwen2.5 0.5B instruct. We keep the training setup and hyperparameters constant across both experiments. We use a cosine scheduler with a 0.1 warmup ratio and a learning rate of 5e-6. We use an 8-bit verison of the paged adamw optimizer for memory savings. We set beta1=0.9 and beta2=0.99 for the adam optimizer hyperparameters. We use a batch size of 1 batch per GPU (otherwise, our GPU OOMs), and 4 gradient accumulation steps to mitigate gradient instability. For GRPO, we run 6 generations per batch, which is a fairly standard batch size. In order to mitigate overfitting and ensure stable training, we also employ weight decay and gradient clipping while finetuning. When finetuning without gradient clipping, we observe significant degradation in model performance and divergence in our training and evaluation loss; adding regularization prevented this issue without significant hyperparameter tuning. We do not significantly hyperparameter tune our models due to GPU resource constraints and time constraints.
 
+All of our base models were loaded in at 4-bit precision; without 4-bit quantization, we would not be able to load and finetune the 8B models on our available hardware. We also employ LoRA with rank 16 when finetuning in order to further reduce compute and memory requirements by freezing model weights and instead inserting trainable low-rank matrices that approximate weight updates to the whole model. Each model is trained for 1 epoch on the test set of the GSM8K dataset.
 
+In terms of hardware, for the large experiment, we use ~72 GPU hours on a RTX A6000. For the small experiment, we use ~12 GPU hours on a RTX 2080. For software libraries, we primarily use TRL and trainer for training with GRPO. We also experimented with VERL, as mentioned previously, but found it to be too difficult to even set up due to lack of documentation.
 
-Greedy layer-wise training: https://proceedings.neurips.cc/paper_files/paper/2006/file/5da713a690c067105aeb2fae32403405-Paper.pdf
-Freezeout: https://arxiv.org/abs/1706.04983
+## 5. Results and Discussion
 
-Learning rate decay
+For both the large and small model experiments, we train models using our hybrid perplexity approach, as well as only relative perplexity as a comparison. We also train models only using absolute perplexity, which was the original formulation of our reward, but find that the model doesn't learn at all. Both of our models (relative and hybrid) achieve 73% evaluation accuracy after one epoch of training. However, the baseline accuracy of Llama-3.2 8B is 72%. Note that we find that with only a perplexity-based reward and no format rewards, the model is not sufficiently able to learn the correct output format to be able to use rules-based checks on the output correctness, so we use an LLM to evaluate whether the outputs are correct. The plot below shows training and evaluation reward on our large model with hybrid perplexity.
 
-Curriculum learning: training on examples of increasing difficulty
-Freezing layers during training improves efficiency and possibly helps generalize better (see surgical finetuning paper)
+![GSM8K Large Models Results](figures/large_model_plots.png)
 
+For the small model experiment, we do a similar setup and find that training does not improve results from the baseline at all. During the presentation, I reported that the evaluation accuracy went up from 0.11 to 0.15. However, I noticed that this probably was caused by a prompting inconsistency for the evaluator LLM between the baseline and my approach. After normalizing the prompts, the large model experiments had similar results but the small model accuracy dropped down to the baseline of 0.11, indicating that no improvement was made. The plot below shows training reward on our small model with hybrid perplexity.
 
+![GSM8K Small Models Results](figures/small_model_plots.png)
+
+Overall, our results are fairly disappointing on the surface. None of our experiments showed significant improvements over the baseline, and some setups even led to performance degradation. However, some interesting results arise from manually comparing our model's behavior to the baseline. Below are examples of outputs from the models; the first one is from our finetuned model and the second is from the base model.
+
+Finetuned Model:
+Question: Claire wants to make 2 cakes for her mother. Two packages of flour are required for making a cake. If 1 package of flour is $3, how much does she pay for the flour that is enough to make 2 cakes?
+Generated Context: To find out how much flour Claire needs for 2 cakes, we first need to determine how many packages of flour are required for 2 cakes. Since each cake requires 2 packages of flour and she is making 2 cakes, she needs 2 cakes * 2 packages per cake = 4 packages of flour.
+The cost of 1 package of flour is $3, so the cost of 4 packages of flour would be 4 packages * $3 per package = $12.
+Therefore the answer is:
+
+Non-finetuned model:
+Question: Janet’s ducks lay 16 eggs per day. She eats three for breakfast every morning and bakes muffins for her friends every day with four. She sells the remainder at the farmers' market daily for $2 per fresh duck egg. How much in dollars does she make every day at the farmers' market?
+Generated Context: To solve this problem, we need to follow these steps:
+1. First, we need to calculate the total number of eggs laid by the ducks in a day, which is given as 16 eggs.
+2. Since Janet eats three eggs for breakfast and bakes four for her friends, she uses a total of 3 + 4 = 7 eggs.
+3. To find the number of eggs remaining, we subtract the used eggs from the total number of eggs laid: 16 - 7 = 9 eggs.
+4. Since Janet sells the remaining eggs at $2 per egg, we multiply the number of remaining eggs by the selling price to find the total amount she makes: 9 eggs * $2/egg = $18.
+The answer is 18.
+
+We notice that our finetuned reasoning context model lowers the perplexity of the base model's output being the exact desired output by ending its output with "Therefore the answer is:". This pattern is consistent for almost all of the outputs from our finetuned model. On the other hand, the model that was not finetuned just outputs the answer directly, which makes it less likely for a base model to output just the desired answer given that output as context. We also find from our rewards that finetuning does lower the perplexity of the desired outputs significantly; however, it is not sufficient enough to improve the evaluation accuracy. It is very possible that training our model with more data and more epochs would help here, but due to compute limitations I wasn't able to try that.
+
+## 6. Parameter Efficient Training with Iterative Layer Freezing
+
+I started this semester with an entirely different project goal: to explore using iterative layer freezing during pretraining to improve parameter efficiency. However, I abandoned the idea after two weeks because it seems that pretraining for the current LLM architectures is mostly a solved problem, and also because I don't have nearly enough compute to run meaningful pretrianing experiments. However, I have also included the code for that experiment in this repo.
+
+## 7. Conclusion and Reflections
+
+Despite the results, I still think the framework is interesting and worth further exploration; the paper from Gurung and Lapata last month that I mentioned earlier found that the framework works for creative story generation but only does human evaluation. One big thing I'd like to try if I continued this project in the future is to use a textual reasoning dataset that might be more suitable for my reward function. Overall, my project explored how to design rewards for general domains and specifically investigated the efficacy of using a perplexity reward to train LLMs with GRPO.
+
+### Reflection Questions:
+
+**What was the number one technical or conceptual difficulty?**
+The biggest limitation was definitely compute. Towards the end of the semester, my training scripts spent almost a week in slurm queue every time I submitted them, which forced me to run experiments at a glacial pace. My lab only has 16 A6000s so they were highly in demand.
+
+**What part of the project workflow was easier than expected? Harder?**
+**Easier:** working with Unsloth and TRL. They did a great job with making the frameworks easy to use and relatively easy to debug! The same can’t be said for VERL, which was poorly documented in many places and had a lot of unexpected bugs (it is possible that there is better documentation in Chinese, but my reading is not good enough for technical use)
+**Harder:** working with the GPUs. Also coming up with new ideas, although Professor Davis helped significantly on this aspect!
+
+**How did your project goals or approach evolve based on self-critiques or intermediate results?**
+My project significantly changes throughout the semester. I began the semester exploring rewards in easily verifiable settings like linear algebra problems, but pivoted towards experimenting with flexible and more general-purpose rewards. A large part of this was that Professor Davis had the interesting idea of training a context model to generate reasoning traces.
+
+**How did AI tools assist your project (e.g., coding, debugging, writing, brainstorming)?**
+AI helped a lot with initial coding iterations and debugging GPU and SLURM problems. I have detailed more in the llm_exploration section of the archive.
+
+**What was the most surprising result or finding during the project?**
+While I shouldn't have been too surprised, as ideas don't always work on the first few tries, I was slightly surprised and disappointed that my formulation didn’t work as well as I expected. I think the biggest problem was compute (common trend!) which prevented me from iterating on ideas quickly.
+
+**Which specific lecture topic, concept, or technique from the course was most useful for your project? Explain how.**
+The last few lectures on best practices for training large language models were very helpful, as they helped me better understand the workflow. Even though I wasn’t able to apply it super well for this project due to compute and time limitations, it was still tremendously helpful.
+
+**How has your perspective on applying optimization in practice changed since the beginning of the course?**
+I’ve gotten a deeper understanding and appreciation of the math behind the optimization and how optimization makes all of modern deep learning work.
+
+**If you had two more weeks, what specific next step would you take on the project?**
+As I mentioned, I would have liked to train on other datasets. Also, I think combining the perplexity reward with format rewards would have been interesting.
+
+**If you could restart the project, what is the single biggest change you would make to your approach or plan?**
+By far the biggest thing I would change is **finding a teammate!!** I started the project with the incorrect impression that most people in the course were planning to work on a finance-related project after only asking three other people. This obviously turned out to be hilariously incorrect, as two other teams just in my section explored RL in some way. Working on a team would have alowed the project to be larger in scope and allowed us to come up with new ideas by collaborating!

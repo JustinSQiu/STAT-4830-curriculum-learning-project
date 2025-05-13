@@ -1,6 +1,6 @@
-[submodule "TinyZero-Efficient"]
-	path = TinyZero-Efficient
+[submodule "src/linear_algebra/TinyZero-Efficient"]
+	path = src/linear_algebra/TinyZero-Efficient
 	url = https://github.com/JustinSQiu/TinyZero-Efficient
-[submodule "DeepSeekRL-Extended-Efficient"]
-	path = DeepSeekRL-Extended-Efficient
+[submodule "src/linear_algebra/DeepSeekRL-Extended-Efficient"]
+	path = src/linear_algebra/DeepSeekRL-Extended-Efficient
 	url = https://github.com/JustinSQiu/DeepSeekRL-Extended-Efficient.git

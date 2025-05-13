@@ -1,7 +1,7 @@
 from transformers import BertConfig, BertForMaskedLM
 from torch.optim import Adam
 from tqdm import tqdm
-from dataset import get_dataloader_for_grade
+from curriculum_learning.dataset import get_dataloader_for_grade
 
 # Initialize model
 config = BertConfig(

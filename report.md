@@ -2,7 +2,7 @@
 
 **Team Member(s):** Justin Qiu
 
-## 0. Executive Summary
+## Executive Summary
 
 Recent research such as DeepSeek R1 has demonstrated that reinforcement learning is a viable way to train large language models to achieve state-of-the-art in reasoning tasks without using traditional post-training techniques like supervised finetuning. This is achieved through the careful crafting of rewards that steer the language model towards more desirable behavior, as well as a new optimization objective called GRPO (Group Relative Policy Optimization), which is particularly effective when working with sparse rewards. R1 and various follow-up works have primarily focused on reasoning tasks such as mathematics and coding, where the correctness of an output is relatively easy to verify and rewards are therefore easier to design. However, there exists a large number of domains such as creative reasoning that do not lend themselves to easily crafted reward functions. In this project, I explore alternative reward modeling approaches that can work with more general domains that don't have obvious reward design. Specifically, I implement a perplexity-based reward model that uses a frozen pretrained LLM's output logits as the reward function, and demonstrate results on GSM8K, a math word problem dataset.
 
@@ -36,7 +36,7 @@ I focus my exploration on a subset of the problem, which is inverting 2 by 2 mat
 Our model was able to achieve around 90% evaluation accuracy after 1000 training steps.
 Insert figure in figures/linalg_plot for me.
 
-![Linear Algebra Results](figures/linalg_plot)
+![Linear Algebra Results](figures/linalg_plot.png)
 
 ## 3. Methodology for General Rewards
 
@@ -48,17 +48,21 @@ The reward I focused on exploring is relative perplexity. Language models output
 
 $Perplexity(S) = \exp\left(-\frac{1}{N}\sum_{i=1}^{N}\log P(x_i | x_{<i})\right)$
 
-Our initial experiments used an absolute perplexity reward, which directly takes the perplexity of an output as the reward. However, this led to extremely unstable training, as perplexities of different outputs are difficult to compare against each other, and the scale of perplexity (1 to infinity) leads to very unstable rewards for high perplexity outputs. As such, we adopt a hybrid perplexity reward, which integrates both absolute perplexity and relative perplexity, which represents the relative improvement in perplexity for an output compared to a base output. An equation of our reward is shown below.
+Our initial experiments used an absolute perplexity reward, which directly takes the perplexity of an output as the reward. However, this led to extremely unstable training, as perplexities of different outputs are difficult to compare against each other, and the scale of perplexity (1 to infinity) leads to very unstable rewards for high perplexity outputs. As such, we adopt a hybrid perplexity reward, which integrates both absolute perplexity and relative perplexity, which represents the relative improvement in perplexity for an output compared to a base output. An equation of our reward is shown below. We also clip the relative perplexity component on the left side by 0, as otherwise the perplexity reward can go to negative infinity for outputs that are significantly worse than baseline outputs, leading to unstable training.
 
 **Hybrid Perplexity Reward Formula:**
 
 $Reward = \alpha \cdot \text{Absolute Perplexity} + (1 - \alpha) \cdot \text{Relative Perplexity}$
+$Relative Perplexity = \max (0, \frac{PPL_\pi^G (y \vert x) - PPL_\pi^G (y \vert x, a)}{PPL_\pi^G (y \vert x)})$
+$Absolute Perplexity = \frac{1}{PPL_\pi^G(y \vert x, a)}$
 
 We also adopt a novel framework for reinforcement learning. While most current methods train a model directly with reinforcement learning to do reasoning, output formatted responses, etc., we instead train a reasoning model with GRPO to output reasoning traces that allow another frozen base model to just output the answer. The frozen base model provides both the final answer for our inputs and the logits necessary to calculate the perplexity reward for each update step of GRPO on our reasoning context model.
 Our approach is based on the hypothesis that
 P_base(Answer | c, Question) is very high for multiple contexts c
 
 Our new reinforcement learning setup has several key advantages compared to a single model approach. First, the base model and the reasoning context model can be different, allowing for potentially more efficient methods to be developed. For instance, it would be interesting to explore varying the size of reasoning context model and the base model, as only the reasoning context model is finetuned. Second, the new setup lends itself well to our perplexity reward. Since our relative perplexity reward requires a baseline output to compare to, giving the question directly to the frozen base model provides us with a reasonable baseline output.
+
+![New Formulation](figures/new_formulation.png)
 
 **GRPO Formula:**
 
@@ -76,13 +80,13 @@ In terms of hardware, for the large experiment, we use ~72 GPU hours on a RTX A6
 
 ## 5. Results and Discussion
 
-For both the large and small model experiments, we train models using our hybrid perplexity approach, as well as only relative perplexity as a comparison. We also train models only using absolute perplexity, which was the original formulation of our reward, but find that the model doesn't learn at all. Both of our models (relative and hybrid) achieve 73% evaluation accuracy after one epoch of training. However, the baseline accuracy of Llama-3.2 8B is 72%. Note that we find that with only a perplexity-based reward and no format rewards, the model is not sufficiently able to learn the correct output format to be able to use rules-based checks on the output correctness, so we use an LLM to evaluate whether the outputs are correct.
+For both the large and small model experiments, we train models using our hybrid perplexity approach, as well as only relative perplexity as a comparison. We also train models only using absolute perplexity, which was the original formulation of our reward, but find that the model doesn't learn at all. Both of our models (relative and hybrid) achieve 73% evaluation accuracy after one epoch of training. However, the baseline accuracy of Llama-3.2 8B is 72%. Note that we find that with only a perplexity-based reward and no format rewards, the model is not sufficiently able to learn the correct output format to be able to use rules-based checks on the output correctness, so we use an LLM to evaluate whether the outputs are correct. The plot below shows training and evaluation reward on our large model with hybrid perplexity.
 
-![GSM8K Large Models Results](figures/plot1)
+![GSM8K Large Models Results](figures/large_model_plots.png)
 
-For the small model experiment, we do a similar setup and find that training does not improve results from the baseline at all. During the presentation, I reported that the evaluation accuracy went up from 0.11 to 0.15. However, I noticed that this probably was caused by a prompting inconsistency for the evaluator LLM between the baseline and my approach. After normalizing the prompts, the large model experiments had similar results but the small model accuracy dropped down to the baseline of 0.11, indicating that no improvement was made.
+For the small model experiment, we do a similar setup and find that training does not improve results from the baseline at all. During the presentation, I reported that the evaluation accuracy went up from 0.11 to 0.15. However, I noticed that this probably was caused by a prompting inconsistency for the evaluator LLM between the baseline and my approach. After normalizing the prompts, the large model experiments had similar results but the small model accuracy dropped down to the baseline of 0.11, indicating that no improvement was made. The plot below shows training reward on our small model with hybrid perplexity.
 
-![GSM8K Small Models Results](figures/plot2)
+![GSM8K Small Models Results](figures/small_model_plots.png)
 
 Overall, our results are fairly disappointing on the surface. None of our experiments showed significant improvements over the baseline, and some setups even led to performance degradation. However, some interesting results arise from manually comparing our model's behavior to the baseline. Below are examples of outputs from the models; the first one is from our finetuned model and the second is from the base model.
 

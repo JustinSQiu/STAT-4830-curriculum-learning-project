@@ -16,15 +16,15 @@ On the other hand, while PPO and DPO both rely on dense reward estimates, many r
 
 I began my project by investigating a simpler domain: linear algebra. Specifically, I investigate whether GRPO with carefully crafted rewards can be effectively used to teach small language models how to do matrix inversion and reduction of a matrix to the reduced row echelon form.
 
-**Problem Formulation:** Given \$A\$, find \$A^*\$ such that \$A \cdot A^* = I\$
+**Problem Formulation:** Given $A$, find $A^*$ such that $A \cdot A^* = I$
 
 **Problem Setup:**
 
 This problem domain is easily verifiable and has fairly logical rewards. I use four rewards to shape the model:
 
-* Binary correctness reward: \$I(|A \cdot A^\* - I| < tolerance)\$
-* Row by row correctness: \$\sum\_x I(|A^\*\_x - A^{-1}\_x| < tol)\$ where \$A\_x\$ represents a row.
-* Continuous correctness: \$2 \cdot \exp(-\frac{||A^{-1} - A^\*||\_{L1}}{tol})\$
+* Binary correctness reward: $I(|A \cdot A^* - I| < tol)$
+* Row by row correctness: $\sum_x I(|A^*_x - A^{-1}_x| < tol)$ where $A_x$ represents a row.
+* Continuous correctness: $2 \cdot \exp(-\frac{||A^{-1} - A^*||_{L1}}{tol})$
 * Various formatting rewards such as whether the output is a valid matrix, matrix shape correctness, etc.
 
 However, there were various reward hacking problems throughout the process that forced me to change the reward structure. For instance, I initially had a reward for length. However, the model reward hacked by outputting extremely repetitive outputs and even outputting code to solve the question, which artificially increases the length of the output.
@@ -52,7 +52,7 @@ Our initial experiments used an absolute perplexity reward, which directly takes
 
 **Hybrid Perplexity Reward Formula:**
 
-$Reward = \alpha \cdot \text{Absolute Perplexity} + (1 - \alpha) \cdot \text{Relative Perplexity}$
+$\text{Reward} = \alpha \cdot \text{Absolute Perplexity} + (1 - \alpha) \cdot \text{Relative Perplexity}$
 
 $\text{Relative Perplexity} = \max (0, \frac{PPL_\pi^G (y \vert x) - PPL_\pi^G (y \vert x, a)}{PPL_\pi^G (y \vert x)})$
 
@@ -93,12 +93,15 @@ For the small model experiment, we do a similar setup and find that training doe
 Overall, our results are fairly disappointing on the surface. None of our experiments showed significant improvements over the baseline, and some setups even led to performance degradation. However, some interesting results arise from manually comparing our model's behavior to the baseline. Below are examples of outputs from the models; the first one is from our finetuned model and the second is from the base model.
 
 Finetuned Model:
+```text
 Question: Claire wants to make 2 cakes for her mother. Two packages of flour are required for making a cake. If 1 package of flour is $3, how much does she pay for the flour that is enough to make 2 cakes?
 Generated Context: To find out how much flour Claire needs for 2 cakes, we first need to determine how many packages of flour are required for 2 cakes. Since each cake requires 2 packages of flour and she is making 2 cakes, she needs 2 cakes * 2 packages per cake = 4 packages of flour.
 The cost of 1 package of flour is $3, so the cost of 4 packages of flour would be 4 packages * $3 per package = $12.
 Therefore the answer is:
+```
 
 Non-finetuned model:
+```text
 Question: Janet’s ducks lay 16 eggs per day. She eats three for breakfast every morning and bakes muffins for her friends every day with four. She sells the remainder at the farmers' market daily for $2 per fresh duck egg. How much in dollars does she make every day at the farmers' market?
 Generated Context: To solve this problem, we need to follow these steps:
 1. First, we need to calculate the total number of eggs laid by the ducks in a day, which is given as 16 eggs.
@@ -106,6 +109,7 @@ Generated Context: To solve this problem, we need to follow these steps:
 3. To find the number of eggs remaining, we subtract the used eggs from the total number of eggs laid: 16 - 7 = 9 eggs.
 4. Since Janet sells the remaining eggs at $2 per egg, we multiply the number of remaining eggs by the selling price to find the total amount she makes: 9 eggs * $2/egg = $18.
 The answer is 18.
+```
 
 We notice that our finetuned reasoning context model lowers the perplexity of the base model's output being the exact desired output by ending its output with "Therefore the answer is:". This pattern is consistent for almost all of the outputs from our finetuned model. On the other hand, the model that was not finetuned just outputs the answer directly, which makes it less likely for a base model to output just the desired answer given that output as context. We also find from our rewards that finetuning does lower the perplexity of the desired outputs significantly; however, it is not sufficient enough to improve the evaluation accuracy. It is very possible that training our model with more data and more epochs would help here, but due to compute limitations I wasn't able to try that.
 

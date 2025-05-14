@@ -69,7 +69,7 @@ Follow these instructions to set up your environment:
    export WANDB_TOKEN=...
    ```
 
-4. **Training:**: If you are on a slurm cluster, you can simply do as follows from the root folder after modifying the paths in the script to point to the corret locations.
+4. **Training:** If you are on a slurm cluster, you can simply do as follows from the root folder after modifying the paths in the script to point to the corret locations.
    ```bash
    cd src/reasoning_context_model
    sbatch scripts/train.sh
@@ -84,7 +84,7 @@ Follow these instructions to set up your environment:
 
    Note that throughout the setup, you may need to tune the directories and paths a bit to get it to work. All of my experiments were run on the Penn NLP GPU cluster, and I cannot verify that these paths work locally because my computer cannot locally laod in the base models and train them.
 
-5. **Inference:**: If you are on a slurm cluster, you can do as follows. You may need to first modify inference.py to point to the location of your trained model.
+5. **Inference:** If you are on a slurm cluster, you can do as follows. You may need to first modify inference.py to point to the location of your trained model.
    ```bash
    cd src/reasoning_context_model
    sbatch scripts/inference.sh
@@ -99,7 +99,7 @@ Follow these instructions to set up your environment:
 
 The experiments will be automatically logged on your Wandb account; go to https://wandb.ai/ and monitor them there.
 
-## Why there is no demo
+## Why there is no Google Colab demo
 
 Please note that it is difficult for me to provide an executable demo for this project. I can't even load the models in for inference on my 6 year old Macbook Air, let alone train them. It is probably possible to hook this up to Collab, but since Collab is not meant for training models for multiple days, I don't think that is the best thing to do. Also, the GPU clusters I've used have been pretty unstable and very overloaded for the past few days, and I haven't been able to get a GPU to even upload my model to Huggingface. Finally, because the cluster only gives us access to the GPUs through SLURM and we can't SSH directly into them, I can't even connect a GPU to a notebook, which makes coding in a notebook moot. Therefore, I didn't feel that it makes sense to upload a demo in a notebok. However, with minimal code changes to the paths, this repo shouldn't be too difficult to set up. Please feel free to contact me at jsq@seas.upenn.edu if there are any difficulties setting up!
 

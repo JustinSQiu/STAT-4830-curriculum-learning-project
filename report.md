@@ -54,9 +54,9 @@ Our initial experiments used an absolute perplexity reward, which directly takes
 
 $Reward = \alpha \cdot \text{Absolute Perplexity} + (1 - \alpha) \cdot \text{Relative Perplexity}$
 
-$Relative Perplexity = \max (0, \frac{PPL_\pi^G (y \vert x) - PPL_\pi^G (y \vert x, a)}{PPL_\pi^G (y \vert x)})$
+$\text{Relative Perplexity} = \max (0, \frac{PPL_\pi^G (y \vert x) - PPL_\pi^G (y \vert x, a)}{PPL_\pi^G (y \vert x)})$
 
-$Absolute Perplexity = \frac{1}{PPL_\pi^G(y \vert x, a)}$
+$\text{Absolute Perplexity} = \frac{1}{PPL_\pi^G(y \vert x, a)}$
 
 We also adopt a novel framework for reinforcement learning. While most current methods train a model directly with reinforcement learning to do reasoning, output formatted responses, etc., we instead train a reasoning model with GRPO to output reasoning traces that allow another frozen base model to just output the answer. The frozen base model provides both the final answer for our inputs and the logits necessary to calculate the perplexity reward for each update step of GRPO on our reasoning context model.
 Our approach is based on the hypothesis that
@@ -68,7 +68,7 @@ Our new reinforcement learning setup has several key advantages compared to a si
 
 **GRPO Formula:**
 
-$L_{GRPO}(\theta) = \mathbb{E}_{t}\left[\min\left(r_t(\theta)A_t, \text{clip}(r_t(\theta), 1 - \epsilon, 1 + \epsilon)A_t\right)\right]$
+![GRPO Formulation](figures/grpo_formulation.png)
 
 We use GSM8K as our dataset for both training and evaluation. GSM8k is a representative math word problem dataset with problems that involve arithmetic and basic multi-step reasoning. GSM8k does indeed have clear and verifiable rewards that have been extensively explored; however, we choose to test our approach on GSM8k so that we can validate our results on a commonly used dataset.
 

@@ -6,8 +6,6 @@
 
 ---
 
-
-
 ## High-Level Summary
 
 **Problem Statement:** ecent research such as DeepSeek R1 has demonstrated that reinforcement learning is a viable way to train large language models to achieve state-of-the-art in reasoning tasks without using traditional post-training techniques like supervised finetuning. This is achieved through the careful crafting of rewards that steer the language model towards more desirable behavior, as well as a new optimization objective called GRPO (Group Relative Policy Optimization), which is particularly effective when working with sparse rewards. R1 and various follow-up works have primarily focused on reasoning tasks such as mathematics and coding, where the correctness of an output is relatively easy to verify and rewards are therefore easier to design. However, there exists a large number of domains such as creative reasoning that do not lend themselves to easily crafted reward functions. It is desirable to craft rewards that can be generally applied to any domain.
@@ -22,19 +20,29 @@
 
 ```
 project-root/
-├── src/                 # Final scripts and modules
-├── notebooks/           # Jupyter notebooks demonstrating workflows
-├── docs/                # Documentation and supplementary materials
-├── report.md            # Comprehensive final report
-└── _development_history/# Historical development files and experiments
+├── src/                            # Final scripts and modules
+│   ├── curriculum_learning/        # Iterative freezing/curriculum learning experiments
+│   ├── linear_algebra/             # Linear algebra experiments
+│   │   ├── DeepSeekRL-Extended/    # DeepSeekRL experiments
+│   │   └── TinyZero-Efficient/     # TinyZero experiments (primary experiments)
+│   └── reasoning_context_model/    # Main experiments (reasoning context model)
+│       ├── custom_grpo_trainer.py  # Custom GRPO trainer for evaluation tracking
+│       ├── data.py                 # Datasets and data processing
+│       ├── extract_answers.py      # LLM-assisted evaluation
+│       ├── helpers.py              # Helper functions
+│       ├── inference.py            # Inference scripts
+│       ├── models.py               # Model definitions and loading
+│       ├── plotter.py              # Deprecated plotting tool (for context)
+│       ├── rewards.py              # Reward functions for GRPO
+│       ├── test.py                 # Debugging/logit extraction
+│       ├── train_baseline.py       # Train baseline models (GSM8k)
+│       └── train.py                # Main training pipeline
+├── docs/                           # Slide deck
+├── figures/                        # Figures for documentation
+├── report.md                       # Comprehensive final report
+├── README.md                       # Summary and setup instructions
+└── _archive/                       # Historical files and experiments
 ```
-
-* `src/`: Contains the finalized Python scripts/modules used in the project.
-* `notebooks/`: Demonstrates usage, experimentation, and reproducibility.
-* `docs/`: Includes additional documentation and resources.
-* `report.md`: Presents a detailed narrative and analysis of the project.
-* `_development_history/`: Maintains historical experiments and developmental scripts for reference.
-
 ---
 
 ## Setup Instructions

@@ -50,13 +50,6 @@ Thus we can
 * Experiment with smaller base model and larger context model
 
 # Self Critique (formatted it from previous notes)
-Strengths:
-* Log likelihood approach is novel, haven't found it after lit review
-* Well set up for rest of sem in terms of resources
-
-Weaknesses:
-* The log likelihood loss is very unstable, maybe switch to a different approach
-* Use different datasets
 
 ### OBSERVE
 
@@ -72,7 +65,7 @@ Weaknesses:
 
 #### Areas for Improvement
 
-* The absolute perplexity reward shows instability and limited standalone effectiveness.
+* The log likelihood loss is very unstable, maybe switch to a different approach
 * Dataset selection and experimentation currently lack breadth beyond GSM8k and preliminary attempts at HellaSwag.
 
 #### Critical Risks/Assumptions

@@ -185,7 +185,7 @@ ie flip two rows,
 #### Strengths
 
 * Successfully identified a clear progression path (curriculum learning) that notably improved preliminary results.
-* Thoughtfully refined reward structures by transitioning to continuous, norm-based correctness.
+* Refined reward structures by transitioning to continuous, norm-based correctness.
 * Practical experimentation established a useful baseline and revealed key challenges.
 
 #### Areas for Improvement

@@ -99,6 +99,10 @@ Follow these instructions to set up your environment:
 
 The experiments will be automatically logged on your Wandb account; go to https://wandb.ai/ and monitor them there.
 
-## No Demo
+## Why there is no demo
 
-Please note that it is difficult for me to provide an executable demo for this project. I can't even load the models in for inference on my 6 year old Macbook Air, let alone train them. It is probably possible to hook this up to Collab, but since Collab is not meant for training models for multiple days, I don't think that is the best thing to do. Also, the GPU clusters I've used have been pretty unstable and very overloaded for the past few days, and I haven't been able to get a GPU to even upload my model to Huggingface. However, with minimal code changes to the paths, this repo shouldn't be too difficult to set up if you have the hardware. Please feel free to contact me at jsq@seas.upenn.edu if there are difficulties setting up.
+Please note that it is difficult for me to provide an executable demo for this project. I can't even load the models in for inference on my 6 year old Macbook Air, let alone train them. It is probably possible to hook this up to Collab, but since Collab is not meant for training models for multiple days, I don't think that is the best thing to do. Also, the GPU clusters I've used have been pretty unstable and very overloaded for the past few days, and I haven't been able to get a GPU to even upload my model to Huggingface. Finally, because the cluster only gives us access to the GPUs through SLURM and we can't SSH directly into them, I can't even connect a GPU to a notebook, which makes coding in a notebook moot. Therefore, I didn't feel that it makes sense to upload a demo in a notebok. However, with minimal code changes to the paths, this repo shouldn't be too difficult to set up. Please feel free to contact me at jsq@seas.upenn.edu if there are any difficulties setting up!
+
+## Thank you to Professor Davis!
+
+Thank you for teaching the course this semester! It really filled in a gap that no other course did at Penn, which is understanding and applying the optimization behind modern machine learning. I truly enjoyed the class and learned a lot from it.
